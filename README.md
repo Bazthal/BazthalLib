@@ -1,4 +1,3 @@
-
 # BazthalLib UI Library — README
 
 `BazthalLib` is a custom C# UI framework designed for themable Windows Forms apps.  
@@ -53,7 +52,8 @@ Systems	File handling, execution, networking logic
 Resources	Assets for Color Picker and Theme Selector components
 
 ## Color Picker Preview
-- Compact and expanded versions of the built-in color picke
+- Compact and expanded versions of the built-in color picker
+
 ![Color Picker Dialog](./assets/ColorPickerDialog_Compacted.png)
 ![Color Picker Dialog - Expanded](./assets/ColorPickerDialog_Expanded.png)
 
@@ -65,6 +65,3 @@ Resources	Assets for Color Picker and Theme Selector components
 ![Main UI](./assets/Main_UI.png)
 ![Main UI Hot Pink](./assets/Main_UI_HotPink.png)
 ![Settings Menu](./assets/Settings_Window.png)
-
-
-
