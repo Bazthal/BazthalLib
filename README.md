@@ -54,14 +54,14 @@ Resources	Assets for Color Picker and Theme Selector components
 ## Color Picker Preview
 - Compact and expanded versions of the built-in color picker
 
-![Color Picker Dialog](./assets/ColorPickerDialog_Compacted.png)
-![Color Picker Dialog - Expanded](./assets/ColorPickerDialog_Expanded.png)
+![Color Picker Dialog](https://imgur.com/xciltI9)
+![Color Picker Dialog - Expanded](https://imgur.com/YdhbYpL)
 
 
 ## Sample App: MP3 Player UI
 - This MP3 player UI was built entirely with BazthalLib:
 
-![Light / Dark](./assets/Light_Dark.png)
-![Main UI](./assets/Main_UI.png)
-![Main UI Hot Pink](./assets/Main_UI_HotPink.png)
-![Settings Menu](./assets/Settings_Window.png)
+![Light / Dark](https://imgur.com/qCo4YNu)
+![Main UI](https://imgur.com/V34L196)
+![Main UI Hot Pink](https://imgur.com/4ZK0z4b)
+![Settings Menu](https://imgur.com/bJfe3tr)
