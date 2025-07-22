@@ -18,24 +18,22 @@ namespace BazthalLib.Systems.Network
             if (System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
             {
 
-                HttpClient httpClient = new HttpClient();
+                HttpClient httpClient = new();
                 httpClient.DefaultRequestHeaders.Add("Accept", "text/html, application/xhtml+xml, */*");
                 httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)");
 
-                using (var response = httpClient.GetAsync(url).Result)
-                {
+                using var response = httpClient.GetAsync(url).Result;
+                
                     if (response.IsSuccessStatusCode)
                     {
-                        using (var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
-                        {
+                        using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
                             response.Content.CopyToAsync(fileStream).Wait();
-                        }
                     }
                     else
                     {
                         DebugUtils.Log("Networking", "DowloadFile", $"Failed to download file. Status code: {response.StatusCode}");
                     }
-                }
+                
             }
             else
             {

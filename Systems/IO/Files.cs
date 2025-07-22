@@ -63,18 +63,14 @@ namespace BazthalLib.Systems.IO
         /// <param name="deleteZip">If <see langword="true"/>, deletes the zip file after extraction; otherwise, the zip file is retained.</param>
         public static void UnzipFile(string path, string destination, bool deleteZip)
         {
-            using (FileStream zipFile = File.Open(path, FileMode.Open))
-            {
-                using (var archive = new ZipArchive(zipFile))
+            using FileStream zipFile = File.Open(path, FileMode.Open);
+            using var archive = new ZipArchive(zipFile);
+                archive.ExtractToDirectory(destination);
+                archive.Dispose();
+                if (deleteZip == true)
                 {
-                    archive.ExtractToDirectory(destination);
-                    archive.Dispose();
-                    if (deleteZip == true)
-                    {
-                        DeleteFile(path);
-                    }
-                }
-            }
+                    DeleteFile(path);
+                }            
         }
         /// <summary>
         /// Compresses the contents of the specified directory into a zip archive.
@@ -102,11 +98,13 @@ namespace BazthalLib.Systems.IO
         /// <returns>The full path of the selected file if a file is chosen; otherwise, <see langword="null"/>.</returns>
         public static string ChooseFile(string filename = "", string filter = "", string title = "Select a file", bool multiselect = false)
         {
-            OpenFileDialog openFileDialog = new();
-            openFileDialog.Filter = filter;
-            openFileDialog.FileName = filename;
-            openFileDialog.Title = title;
-            openFileDialog.Multiselect = multiselect;
+            OpenFileDialog openFileDialog = new()
+            {
+                Filter = filter,
+                FileName = filename,
+                Title = title,
+                Multiselect = multiselect
+            };
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
@@ -127,11 +125,13 @@ namespace BazthalLib.Systems.IO
         /// dialog is canceled or no files are selected.</returns>
         public static string[] ChooseFiles(string filename = "", string filter = "", string title = "Select files")
         {
-            OpenFileDialog openFileDialog = new();
-            openFileDialog.Filter = filter;
-            openFileDialog.FileName = filename;
-            openFileDialog.Title = title;
-            openFileDialog.Multiselect = true;
+            OpenFileDialog openFileDialog = new()
+            {
+                Filter = filter,
+                FileName = filename,
+                Title = title,
+                Multiselect = true
+            };
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
@@ -152,11 +152,13 @@ namespace BazthalLib.Systems.IO
         /// <returns>The path of the selected folder if the user clicks OK; otherwise, <see langword="null"/>.</returns>
         public static string ChooseFolder(string title, bool newFolder, bool setTitle, string initialPath = "")
         {
-            FolderBrowserDialog folderBrowserDialog = new();
-            folderBrowserDialog.SelectedPath = initialPath;
-            folderBrowserDialog.Description = title;
-            folderBrowserDialog.ShowNewFolderButton = newFolder;
-            folderBrowserDialog.UseDescriptionForTitle = setTitle;
+            FolderBrowserDialog folderBrowserDialog = new()
+            {
+                SelectedPath = initialPath,
+                Description = title,
+                ShowNewFolderButton = newFolder,
+                UseDescriptionForTitle = setTitle
+            };
             if (folderBrowserDialog.ShowDialog() == DialogResult.OK)
             {
                 return folderBrowserDialog.SelectedPath;
@@ -173,10 +175,12 @@ namespace BazthalLib.Systems.IO
         /// <returns>The full path of the file selected by the user, or <see langword="null"/> if the dialog is canceled.</returns>
         public static string SaveFile(string filename = "", string filter = "", string title = "Save File")
         {
-            SaveFileDialog saveFileDialog = new();
-            saveFileDialog.Filter = filter;
-            saveFileDialog.FileName = filename;
-            saveFileDialog.Title = title;
+            SaveFileDialog saveFileDialog = new()
+            {
+                Filter = filter,
+                FileName = filename,
+                Title = title
+            };
 
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {

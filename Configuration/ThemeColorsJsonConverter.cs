@@ -13,7 +13,7 @@ namespace BazthalLib.Configuration
    
     public class ThemeColorsJsonConverter : JsonConverter<ThemeColors>
     {
-        private string _version = "V1.0";
+        private readonly string _version = "V1.1";
         /// <summary>
         /// 
         /// </summary>
@@ -51,7 +51,7 @@ namespace BazthalLib.Configuration
         /// <param name="name">The name of the property to parse as a color.</param>
         /// <param name="fallback">The color to return if parsing is unsuccessful.</param>
         /// <returns>The parsed <see cref="Color"/> if successful; otherwise, the specified fallback color.</returns>
-        private Color TryParseColor(JsonElement root, string name, Color fallback)
+        private static Color TryParseColor(JsonElement root, string name, Color fallback)
         {
             if (!root.TryGetProperty(name, out var prop))
                 return fallback;
@@ -61,9 +61,9 @@ namespace BazthalLib.Configuration
                 string str = prop.GetString();
                 if (string.IsNullOrWhiteSpace(str)) return fallback;
 
-                if (str.StartsWith("#"))
+                if (str.StartsWith('#'))
                 {
-                    int argb = int.Parse(str.Substring(1), System.Globalization.NumberStyles.HexNumber);
+                    int argb = int.Parse(str[..1], System.Globalization.NumberStyles.HexNumber);
                     Color parsed = Color.FromArgb(argb);
                     if (parsed.A == 0 && parsed.R == 0 && parsed.G == 0 && parsed.B == 0)
                         return fallback;
@@ -105,7 +105,7 @@ namespace BazthalLib.Configuration
         /// <param name="value">The <see cref="Color"/> to serialize.</param>
         /// <returns>A string representing the color. If the color is a known color and not a system color,  the method returns
         /// the color's name. Otherwise, it returns the ARGB value in hexadecimal format.</returns>
-        private string SerializeColor(Color value)
+        private static string SerializeColor(Color value)
         {
             return value.IsKnownColor && !value.IsSystemColor
                 ? value.Name

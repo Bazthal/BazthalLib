@@ -17,7 +17,7 @@ namespace BazthalLib.Systems.IO
         {
             if (System.IO.File.Exists(path))
             {
-                var RunProcess = Process.Start(path, args);
+                _ = Process.Start(path, args);
                 DebugUtils.Log("Process", "RunExecutable", $"Running Executable: \n  {path} \n with the following arguments: \n {args}");
             }
             else
@@ -40,7 +40,7 @@ namespace BazthalLib.Systems.IO
             if (System.IO.File.Exists(path))
             {
                 //Mainly to be used with RCON or other command line tools that require input x
-                System.Diagnostics.Process run = new System.Diagnostics.Process();
+                System.Diagnostics.Process run = new();
                 run.StartInfo.UseShellExecute = false;
                 run.StartInfo.CreateNoWindow = true;
                 run.StartInfo.FileName = path;

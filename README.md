@@ -1,4 +1,4 @@
-# BazthalLib UI Library — README
+# BazthalLib UI Library - README
 
 `BazthalLib` is a custom C# UI framework designed for themable Windows Forms apps.  
 All components follow a unified, configurable color system with reusable styling.
@@ -54,14 +54,16 @@ Resources	Assets for Color Picker and Theme Selector components
 ## Color Picker Preview
 - Compact and expanded versions of the built-in color picker
 
-![Color Picker Dialog](https://i.imgur.com/xciltI9.png)
-![Color Picker Dialog - Expanded](https://i.imgur.com/YdhbYpL.png)
+| Compacted | Expanded |
+|-----------|----------|
+|![Color Picker Dialog](https://i.imgur.com/xciltI9.png) | ![Color Picker Dialog - Expanded](https://i.imgur.com/YdhbYpL.png)|
 
 
 ## Sample App: MP3 Player UI
 - This MP3 player UI was built entirely with BazthalLib:
 
-![Light / Dark](https://i.imgur.com/qCo4YNu.png)
-![Main UI](https://i.imgur.com/V34L196.png)
-![Main UI Hot Pink](https://i.imgur.com/4ZK0z4b.png)
-![Settings Menu](https://i.imgur.com/bJfe3tr.png)
+| Light / Dark | Theme | HotPink Theme|
+|--------------|-------|--------------|
+| ![Light / Dark](https://i.imgur.com/qCo4YNu.png) | ![Main](https://i.imgur.com/V34L196.png) | ![HotPink](https://i.imgur.com/4ZK0z4b.png)|
+| Settings | Processing Dialog |
+![Settings](https://i.imgur.com/bJfe3tr.png) | ![Loading](https://i.imgur.com/Xeb9Fe3.png)|

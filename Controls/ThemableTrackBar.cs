@@ -11,7 +11,7 @@ namespace BazthalLib.Controls
     public class ThemableTrackBar : ThemableControlBase
     {
         #region Fields
-        private string _version = "V1.1";
+        private string _version = "V1.2";
         private int _minimum = 0;
         private int _maximum = 100;
         private int _value = 0;
@@ -32,6 +32,14 @@ namespace BazthalLib.Controls
         #endregion
 
         #region Properties
+
+        /// <summary>
+        /// Gets the unique identifier for the ThemableTrackBar control.
+        /// </summary>
+        [Browsable(true)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public new string ControlID => $"ThemableTrackBar {_version}";
+
         /// <summary>
         /// Gets or sets a value indicating whether the border is enabled.
         /// </summary>
@@ -129,8 +137,8 @@ namespace BazthalLib.Controls
         /// <summary>
         /// Gets or sets the orientation of the control, which determines the layout direction.
         /// </summary>
-        /// <remarks>Changing the orientation may automatically adjust the control's size to maintain its
-        /// layout consistency.</remarks>
+        /// <remarks>Changing the orientation may automatically adjust the control's size to maintain a
+        /// valid layout.</remarks>
         [Browsable(true)]
         [Category("Behavior")]
         [DefaultValue(Orientation.Horizontal)]
@@ -146,7 +154,7 @@ namespace BazthalLib.Controls
                 {
                     Size = new Size(Height, Width);
                 }
-
+                EnsureValidSize();
                 Invalidate();
             }
         }
@@ -162,13 +170,6 @@ namespace BazthalLib.Controls
             get => base.Text;
             set { base.Text = value; Invalidate(); }
         }
-
-        /// <summary>
-        /// Gets the unique identifier for the ThemableTrackBar control.
-        /// </summary>
-        [Browsable(true)]
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
-        public new string ControlID => $"ThemableTrackBar {_version}";
 
         /// <summary>
         /// Gets or sets a value indicating whether the progress fill is used in the control's appearance.
@@ -203,11 +204,13 @@ namespace BazthalLib.Controls
         #endregion
 
         #region Constructor
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ThemableTrackBar"/> class with default settings.
         /// </summary>
-        /// <remarks>This constructor sets up the control with specific styles for optimized painting and
-        /// resizing. The default size of the track bar is set to 150x16 pixels.</remarks>
+        /// <remarks>This constructor sets the control styles to optimize painting and ensure smooth
+        /// resizing and redrawing. It also initializes the size of the track bar to a default value and validates the
+        /// size to ensure it is within acceptable limits.</remarks>
         public ThemableTrackBar()
         {
             SetStyle(ControlStyles.UserPaint |
@@ -217,7 +220,8 @@ namespace BazthalLib.Controls
                      ControlStyles.Selectable, true);
 
             this.Size = new Size(150, 16);
-
+            EnsureValidSize();
+            Invalidate();
         }
 
 #endregion Conttructor
@@ -391,6 +395,33 @@ namespace BazthalLib.Controls
         #endregion
 
         #region Events
+
+        /// <summary>
+        /// Ensures that the control's size meets the minimum width and height requirements based on its orientation.
+        /// </summary>
+        /// <remarks>If the control's dimensions are smaller than the minimum required size, this method
+        /// adjusts the size to meet the minimum width and height. The minimum size is determined by the control's
+        /// orientation: a vertical orientation requires a minimum width of 10 and a minimum height of 50, while a
+        /// horizontal orientation requires a minimum width of 50 and a minimum height of 10.</remarks>
+        private void EnsureValidSize()
+        {
+            int minWidth = Orientation == Orientation.Vertical ? 10 : 50;
+            int minHeight = Orientation == Orientation.Vertical ? 50 : 10;
+
+            if (Width < minWidth || Height < minHeight)
+            {
+                SuspendLayout();
+                if (Width < minWidth || Height < minHeight)
+                {
+                    Size = new Size(
+                        Math.Max(Width, minWidth),
+                        Math.Max(Height, minHeight)
+                    );
+                }
+                ResumeLayout();
+            }
+        }
+
         /// <summary>
         /// Handles the resize event of the control, ensuring that the control's dimensions do not fall below logical
         /// minimum values.
@@ -403,19 +434,6 @@ namespace BazthalLib.Controls
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-
-            // Logical minimum dimensions
-            int minWidth = Orientation == Orientation.Vertical ? 16 : 50;
-            int minHeight = Orientation == Orientation.Vertical ? 50 : 16;
-
-            // Clamp dimensions if too small
-            if (Width < minWidth || Height < minHeight)
-            {
-                Size = new Size(
-                    Math.Max(Width, minWidth),
-                    Math.Max(Height, minHeight)
-                );
-            }
             Invalidate();
         }
         /// <summary>

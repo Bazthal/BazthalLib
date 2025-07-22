@@ -10,7 +10,7 @@ namespace BazthalLib.Controls
     public class ThemableScrollBar : ThemableControlBase
     {
         #region Fields and Properties
-        private string _version = "V1.1";
+        private readonly string _version = "V1.2";
         private bool _hoverArrows = true;
         private bool _hovering = false;
         private ThemeColors _themeColors = new();
@@ -85,13 +85,13 @@ namespace BazthalLib.Controls
                 {
                     _orientation = value;
 
-                    // Only swap width/height if it doesn't already match orientation
                     if ((_orientation == Orientation.Vertical && Width > Height) ||
                         (_orientation == Orientation.Horizontal && Height > Width))
                     {
                         Size = new Size(Height, Width);
                     }
 
+                    EnsureValidSize();
                     Invalidate();
                 }
             }
@@ -194,6 +194,8 @@ namespace BazthalLib.Controls
                      ControlStyles.ResizeRedraw |
                      ControlStyles.UserPaint, true);
             Size = new Size(16, 100);
+            EnsureValidSize();
+            Invalidate();
         }
         #endregion Constructor
 
@@ -208,6 +210,7 @@ namespace BazthalLib.Controls
         /// <param name="e">A <see cref="PaintEventArgs"/> that contains the event data.</param>
         protected override void OnPaint(PaintEventArgs e)
         {
+            base.OnPaint(e);
             //Set the renderer properties
             _renderer.BackColor = BackColor;
             _renderer.ForeColor = ForeColor;
@@ -232,8 +235,34 @@ namespace BazthalLib.Controls
                 );
 
             //Draw ControlBase Border if enabled
-            base.OnPaint(e);
+            DrawBorder( e.Graphics );
 
+        }
+
+        /// <summary>
+        /// Ensures that the control's size meets the minimum width and height requirements based on its orientation.
+        /// </summary>
+        /// <remarks>If the control's dimensions are smaller than the minimum required size, this method
+        /// adjusts the size to meet the minimum width and height. The minimum size is determined by the control's
+        /// orientation: a vertical orientation requires a minimum width of 10 and a minimum height of 50, while a
+        /// horizontal orientation requires a minimum width of 50 and a minimum height of 10.</remarks>
+        private void EnsureValidSize()
+        {
+            int minWidth = Orientation == Orientation.Vertical ? 10 : 50;
+            int minHeight = Orientation == Orientation.Vertical ? 50 : 10;
+
+            if (Width < minWidth || Height < minHeight)
+            {
+                SuspendLayout();
+                if (Width < minWidth || Height < minHeight)
+                {
+                    Size = new Size(
+                        Math.Max(Width, minWidth),
+                        Math.Max(Height, minHeight)
+                    );
+                }
+                ResumeLayout();
+            }
         }
 
         /// <summary>
@@ -248,19 +277,7 @@ namespace BazthalLib.Controls
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-
-            // Logical minimum dimensions
-            int minWidth = Orientation == Orientation.Vertical ? 10 : 50;
-            int minHeight = Orientation == Orientation.Vertical ? 50 : 10;
-
-            // Clamp dimensions if too small
-            if (Width < minWidth || Height < minHeight)
-            {
-                Size = new Size(
-                    Math.Max(Width, minWidth),
-                    Math.Max(Height, minHeight)
-                );
-            }
+            Invalidate();
         }
 
         /// <summary>

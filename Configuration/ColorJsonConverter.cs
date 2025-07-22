@@ -35,11 +35,11 @@ namespace BazthalLib.Configuration
             {
                 Color parsed;
 
-                if (str.StartsWith("#"))
+                if (str.StartsWith('#'))
                 {
                     if (str.Length == 9) // #AARRGGBB (preferred)
                     {
-                        int argb = int.Parse(str.Substring(1), System.Globalization.NumberStyles.HexNumber);
+                        int argb = int.Parse(str[1..], System.Globalization.NumberStyles.HexNumber);
                         parsed = Color.FromArgb(argb);
                     }
                     else if (str.Length == 7) // #RRGGBB
