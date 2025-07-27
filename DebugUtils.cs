@@ -77,6 +77,10 @@ namespace BazthalLib
         /// <param name="message">The message to be logged. This message will be appended to the current log file.</param>
         private static void LogToFile(string message)
         {
+            //Only do stuff in DebugMode
+            if (!DebugMode)
+                return;
+
             try
             {
                 if (!System.IO.Directory.Exists("Logs"))

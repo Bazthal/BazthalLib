@@ -10,7 +10,7 @@ namespace BazthalLib.Controls
     public class ThemableGroupBox : GroupBox, IThemableControl
     {
         #region Fields and Properties
-        private string _version = "V1.0";
+        private readonly string _version = "V1.0";
         private ThemeColors _themeColors = new();
         private bool _useThemeColors = true;
 
@@ -76,25 +76,24 @@ namespace BazthalLib.Controls
             e.Graphics.Clear(BackColor);
             Size textSize = TextRenderer.MeasureText(Text, Font);
 
-            Rectangle borderRect = new Rectangle(0, textSize.Height / 2, Width - 1, Height - textSize.Height / 2 - 1);
+            Rectangle borderRect = new(0, textSize.Height / 2, Width - 1, Height - textSize.Height / 2 - 1);
 
-            using (Pen borderPen = new Pen(BorderColor))
+            using (Pen borderPen = new(BorderColor))
             {
                 e.Graphics.DrawRectangle(borderPen, borderRect);
             }
 
             // Clear background behind the text so it doesn't get overlapped by the border
-            using (SolidBrush backgroundBrush = new SolidBrush(BackColor))
+            using (SolidBrush backgroundBrush = new(BackColor))
             {
-                Rectangle textBgRect = new Rectangle(6, 0, textSize.Width, textSize.Height);
+                Rectangle textBgRect = new (6, 0, textSize.Width, textSize.Height);
                 e.Graphics.FillRectangle(backgroundBrush, textBgRect);
             }
 
             // Draw the text
-            using (SolidBrush textBrush = new SolidBrush(ForeColor))
-            {
-                e.Graphics.DrawString(Text, Font, textBrush, 6, 0);
-            }
+            using SolidBrush textBrush = new(ForeColor);
+            e.Graphics.DrawString(Text, Font, textBrush, 6, 0);
+            
         }
         /// <summary>
         /// Handles the event when the enabled state of the control changes.

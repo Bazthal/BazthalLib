@@ -11,7 +11,7 @@ namespace BazthalLib.Controls
     public class ThemableTrackBar : ThemableControlBase
     {
         #region Fields
-        private string _version = "V1.2";
+        private readonly string _version = "V1.2";
         private int _minimum = 0;
         private int _maximum = 100;
         private int _value = 0;
@@ -20,8 +20,6 @@ namespace BazthalLib.Controls
         private int _trackThickness = 4;
         private int _margin = 4;
 
-        private bool _useThemeColors = true;
-        private ThemeColors _themeColors = new();
         private bool _useProgressFill = true;
         private bool _roundedThumb = true;
         private Orientation _orientation = Orientation.Horizontal;

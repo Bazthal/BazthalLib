@@ -1,4 +1,8 @@
 # BazthalLib UI Library - README
+[![NuGet](https://img.shields.io/nuget/v/BazthalLib.svg)](https://www.nuget.org/packages/BazthalLib)
+[![Downloads](https://img.shields.io/nuget/dt/BazthalLib.svg)](https://www.nuget.org/packages/BazthalLib)
+[![License](https://img.shields.io/github/license/Bazthal/BazthalLib)](https://github.com/Bazthal/BazthalLib/blob/master/LICENSE)
+[![MP3 Player Sample](https://img.shields.io/badge/sample-MP3%20Player-blue)](https://github.com/Bazthal/MP3PlayerV2)
 
 `BazthalLib` is a custom C# UI framework designed for themable Windows Forms apps.  
 All components follow a unified, configurable color system with reusable styling.
@@ -59,7 +63,7 @@ Resources	Assets for Color Picker and Theme Selector components
 |![Color Picker Dialog](https://i.imgur.com/xciltI9.png) | ![Color Picker Dialog - Expanded](https://i.imgur.com/YdhbYpL.png)|
 
 
-## Sample App: MP3 Player UI
+## Sample App: [MP3PlayerV2](https://github.com/Bazthal/MP3PlayerV2)
 - This MP3 player UI was built entirely with BazthalLib:
 
 | Light / Dark | Theme | HotPink Theme|

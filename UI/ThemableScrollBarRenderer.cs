@@ -53,10 +53,7 @@ namespace BazthalLib.Controls
 
             // Draw thumb
 
-            using (var thumbBrush = new SolidBrush(AccentColor))
-                g.FillRectangle(thumbBrush, thumbRect);
-
-
+            DrawThumb(g, orientation, trackArea, thumbRect);
 
             using (var borderPen = new Pen(BorderColor))
                 if (DrawOuterBorder)

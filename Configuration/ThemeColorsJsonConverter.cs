@@ -63,7 +63,7 @@ namespace BazthalLib.Configuration
 
                 if (str.StartsWith('#'))
                 {
-                    int argb = int.Parse(str[..1], System.Globalization.NumberStyles.HexNumber);
+                    int argb = int.Parse(str[1..], System.Globalization.NumberStyles.HexNumber);
                     Color parsed = Color.FromArgb(argb);
                     if (parsed.A == 0 && parsed.R == 0 && parsed.G == 0 && parsed.B == 0)
                         return fallback;

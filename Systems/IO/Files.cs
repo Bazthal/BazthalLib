@@ -211,7 +211,7 @@ namespace BazthalLib.Systems.IO
             try { System.IO.File.Move(origFile, dest); }
             catch (Exception ex) { DebugUtils.Log("Backup", "Backup Old", $"Unable to backup old file - {ex.Message}");   }
 
-            var backups = System.IO.Directory.GetFiles(folder, $"{fileName}_*.{extention}")
+            var backups = System.IO.Directory.GetFiles(folder, $"{fileName}_*{extention}")
                 .OrderByDescending(f => System.IO.File.GetCreationTime(f))
                 .Skip(maxBackups);
 

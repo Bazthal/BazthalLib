@@ -14,7 +14,7 @@ namespace BazthalLib.Controls
     public class ThemableControlBase : Control, IThemableControl
     {
         #region Fields and Properties
-        private string _version = "V1.0";
+        private readonly string _version = "V1.0";
         private Color _borderColor = SystemColors.ActiveBorder;
         private Color _accentColor = Color.DodgerBlue;
         private Color _selectedItemBackColor = SystemColors.Highlight;
@@ -207,10 +207,10 @@ namespace BazthalLib.Controls
             if (RoundCorners)
             {
                 // Define the rectangle and corner radius
-                Rectangle rect = new Rectangle(0, 0, Width - 1, Height - 1);
+                Rectangle rect = new(0, 0, Width - 1, Height - 1);
 
                 // Create a rounded rectangle path
-                using GraphicsPath path = new GraphicsPath();
+                using GraphicsPath path = new ();
                 path.AddArc(rect.X, rect.Y, CornerRadius, CornerRadius, 180, 90);
                 path.AddArc(rect.Right - CornerRadius, rect.Y, CornerRadius, CornerRadius, 270, 90);
                 path.AddArc(rect.Right - CornerRadius, rect.Bottom - CornerRadius, CornerRadius, CornerRadius, 0, 90);
@@ -223,7 +223,7 @@ namespace BazthalLib.Controls
                 if (DesignMode)
                 {
 
-                    using Pen previewPen = new Pen(Color.DarkGray, 1)
+                    using Pen previewPen = new(Color.DarkGray, 1)
                     {
                         DashStyle = System.Drawing.Drawing2D.DashStyle.Dash
                     };
@@ -231,18 +231,18 @@ namespace BazthalLib.Controls
                 }
                 else
                 {
-                    using Pen pen = new Pen(BorderColor, 4);
+                    using Pen pen = new (BorderColor, 4);
                     g.DrawPath(pen, path);
                     Region = new Region(path);
                 }
             }
             else
             {
-                Rectangle rect = new Rectangle(0, 0, Width - 1, Height - 1);
+                Rectangle rect = new (0, 0, Width - 1, Height - 1);
 
                 if (DesignMode)
                 {
-                    using Pen previewPen = new Pen(Color.DarkGray, 1)
+                    using Pen previewPen = new (Color.DarkGray, 1)
                     {
                         DashStyle = System.Drawing.Drawing2D.DashStyle.Dash
                     };
@@ -250,7 +250,7 @@ namespace BazthalLib.Controls
                 }
                 else
                 {
-                    using Pen pen = new Pen(BorderColor, 4);
+                    using Pen pen = new (BorderColor, 4);
                     g.DrawRectangle(pen, rect);
                     Region = new Region(rect);
                 }
@@ -299,7 +299,7 @@ namespace BazthalLib.Controls
                     return;
             }
 
-            Rectangle textRect = new Rectangle(4, 4, Width - 8, Height - 8);
+            Rectangle textRect = new (4, 4, Width - 8, Height - 8);
             using Brush brush = new SolidBrush(ForeColor);
 
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;

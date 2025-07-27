@@ -10,7 +10,7 @@ namespace BazthalLib.Controls
     public class ThemableStatusStrip : StatusStrip, IThemableControl
     {
         #region Fields and Properties
-        private string _version = "V1.0";
+        private readonly string _version = "V1.0";
         private bool _useThemeColors = true;
         private Color _backColor = SystemColors.Control;
         private Color _foreColor = SystemColors.ControlText;

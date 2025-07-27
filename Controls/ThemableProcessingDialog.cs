@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace BazthalLib.Controls
@@ -12,21 +13,27 @@ namespace BazthalLib.Controls
         private string _lastProgressText = "";
         private string? _lastEtaText = null;
         private readonly string _version = "V1.1";
+        private readonly ThemableButton cancelButton;
+        private readonly CancellationTokenSource _cts = new();
+        public CancellationToken Token => _cts.Token;
+        public bool IsCanceled { get; private set; } = false;
+
         #endregion Fields
 
         #region Constuctor
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ThemableProcessingDialog"/> class with a specified title and
-        /// progress display option.
+        /// Initializes a new instance of the <see cref="ThemableProcessingDialog"/> class with specified options for
+        /// title, progress display, and cancel button.
         /// </summary>
-        /// <remarks>This constructor sets up a dialog with a fixed size and position, disables the
-        /// maximize and minimize buttons,  and centers the dialog relative to its parent. The dialog includes a status
-        /// label and a progress bar,  both of which are themable.</remarks>
+        /// <remarks>The dialog is registered with the theming system upon creation. It is displayed as a
+        /// fixed dialog without minimize or maximize options, and it is centered relative to its parent form. The
+        /// cancel button, if shown, allows the user to cancel the operation, updating the status label
+        /// accordingly.</remarks>
         /// <param name="title">The title of the dialog window. Defaults to "Processing".</param>
-        /// <param name="showProgress">A boolean value indicating whether the progress bar should display progress continuously or as a marquee. 
-        /// <see langword="true"/> for continuous progress; otherwise, <see langword="false"/> for marquee style.</param>
-        public ThemableProcessingDialog(string title = "Processing", bool showProgress = true)
+        /// <param name="showProgress">Indicates whether to display a progress bar. Defaults to <see langword="true"/>.</param>
+        /// <param name="showCancelButton">Indicates whether to display a cancel button. Defaults to <see langword="true"/>.</param>
+        public ThemableProcessingDialog(string title = "Processing", bool showProgress = true, bool showCancelButton = true)
         {
             BazthalLib.UI.Theming.RegisterForm(this);
             this.Text = title;
@@ -34,7 +41,6 @@ namespace BazthalLib.Controls
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.StartPosition = FormStartPosition.CenterParent;
-            this.ClientSize = new Size(400, 80);
             this.ControlBox = false;
 
             statusLabel = new ThemableLabel
@@ -55,6 +61,29 @@ namespace BazthalLib.Controls
                 EnableBorder = true,
                 //UseAccentColor = true
             };
+
+            cancelButton = new()
+            {
+                Text = "Cancel",
+                Location = new Point(300, 60),
+                Size = new Size(90, 25),
+                DialogResult = DialogResult.None // Keep dialog open
+            };
+            if (showCancelButton)
+            {
+                cancelButton.Click += (s, e) =>
+                {
+                    if (IsCanceled) return;
+                    IsCanceled = true;
+                    _cts.Cancel();
+                    cancelButton.Enabled = false;
+                    statusLabel.Text = "Cancelling...";
+                };
+                this.Controls.Add(cancelButton);
+            }
+
+
+            this.ClientSize = new Size(400, showCancelButton ? 100 : 80);
 
             this.Controls.Add(statusLabel);
             this.Controls.Add(progressBar);
@@ -87,7 +116,7 @@ namespace BazthalLib.Controls
                 _lastEtaText = eta;
 
             string etaText = _lastEtaText ?? "ETA: --:--";
-            string newText = $"Processing {type} {current} of {total}...  |  {etaText}";
+            string newText = $"Processing {type} {current} of {total}  |  {etaText}";
 
             if (newText != _lastProgressText)
             {
@@ -152,7 +181,7 @@ namespace BazthalLib.Controls
         /// <param name="milliseconds">The delay in milliseconds before the form is closed. Must be a non-negative integer.</param>
         public void CloseAfter(int milliseconds)
         {
-            Timer timer = new Timer { Interval = milliseconds };
+            System.Windows.Forms.Timer timer = new() { Interval = milliseconds };
             timer.Tick += (s, e) =>
             {
                 timer.Stop();
