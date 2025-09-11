@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices.Marshalling;
 using System.Windows.Forms;
 
 namespace BazthalLib.Controls
@@ -23,7 +24,7 @@ namespace BazthalLib.Controls
     public class ThemableOptionListBox : ThemableListBox
     {
         #region Fields
-        private string _version = "V1.0";
+        private string _version = "V1.1";
         private SelectionVisual _selectionStyle = SelectionVisual.None;
         private int _selectedRadioIndex = -1;
         private HashSet<int> _checkedIndices = new();
@@ -84,6 +85,14 @@ namespace BazthalLib.Controls
                 }
             }
         }
+
+        /// <summary>
+        /// Hides the base EnableMultiSelect Property as already handled here
+        /// </summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public new bool EnableMultiSelect { get => base.EnableMultiSelect ; set { base.EnableMultiSelect = value; } }
+        
 
         /// <summary>
         /// Gets the set of indices that are currently checked.

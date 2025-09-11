@@ -13,14 +13,20 @@ namespace BazthalLib.Controls
     public class ThemableTabControlHeader : FlowLayoutPanel, IThemableControl
     {
         #region Fields and Properties
-        private string _version = "V1.0";
+        private string _version = "V1.2";
         private Color _underlineColor = SystemColors.ActiveBorder;
         private TabControl _linkedTabControl;
         private string _linkedTabControlName = "";
-        private bool _matchBorderColor = false;
-        private bool _showButtonBorder = false;
         private bool _useThemeColors = true;
         private ThemeColors _themeColors = new();
+
+        //Button properties
+        private bool _roundedButtonCorners = false;
+        private int  _corenerRadius = 5;
+        private bool _showButtonBorder = false;
+        private bool _matchBorderColor = false;
+
+
 
         /// <summary>
         /// Gets the unique identifier for the ThemableTabControlHeader.
@@ -48,7 +54,7 @@ namespace BazthalLib.Controls
         /// button color.
         /// </summary>
         [Browsable(true)]
-        [Category("BazthalLib - Behavior")]
+        [Category("BazthalLib - Appearance")]
         [Description("Whether to use the accent color or the border color as the highlighted button")]
         [DefaultValue(false)]
         public bool MatchBorderColor
@@ -59,6 +65,7 @@ namespace BazthalLib.Controls
                 if (_matchBorderColor != value)
                 {
                     _matchBorderColor = value;
+                    GenerateButtons();
                     Invalidate();
                 }
             }
@@ -79,6 +86,46 @@ namespace BazthalLib.Controls
                 if (_showButtonBorder != value)
                 {
                     _showButtonBorder = value;
+                    GenerateButtons();
+                    Invalidate();
+                }
+            }
+        }
+
+
+        
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [Description("Whether or not to round the coners for the border around the buttons.")]
+        [DefaultValue(false)]
+        public bool RoundedButtonCorners
+        {
+            get => _roundedButtonCorners;
+            set
+            {
+                if (_roundedButtonCorners != value)
+                {
+                    _roundedButtonCorners = value;
+                    GenerateButtons();
+                    Invalidate();
+                }
+            }
+        }
+
+
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [Description("Radius to round the coners for the border around the buttons.")]
+        [DefaultValue(false)]
+        public int ButtonCornerRadius
+        {
+            get => _corenerRadius;
+            set
+            {
+                if (_corenerRadius != value)
+                {
+                    _corenerRadius = value;
+                    GenerateButtons();
                     Invalidate();
                 }
             }
@@ -213,39 +260,76 @@ namespace BazthalLib.Controls
             TryResolveTabControl();
         }
 
+
         /// <summary>
-        /// Attempts to resolve and assign a <see cref="TabControl"/> to the <c>LinkedTabControl</c> property.
+        /// Attempts to resolve and link a <see cref="TabControl"/> to this header control.
         /// </summary>
-        /// <remarks>This method searches for a <see cref="TabControl"/> within the parent form's
-        /// controls.  If a control with the name specified in <c>_linkedTabControlName</c> is found, it is assigned to 
-        /// <c>LinkedTabControl</c>. If no named control is found, the first <see cref="TabControl"/>  encountered in
-        /// the control hierarchy is assigned.</remarks>
+        /// <remarks>
+        /// This method first tries to find a <see cref="TabControl"/> by the explicit name specified in <see cref="LinkedTabControlName"/>,
+        /// searching both the parent form and the design-time container. If no explicit name is set or found, it will automatically link
+        /// to the first available <see cref="TabControl"/> in the design-time container or within the parent form's controls.
+        /// Updates <see cref="LinkedTabControl"/> and <see cref="LinkedTabControlName"/> accordingly.
+        /// </remarks>
         private void TryResolveTabControl()
         {
-
             var parent = FindForm();
-            if (parent == null) return;
 
+            // First check by explicit name (runtime + design-time)
             if (!string.IsNullOrEmpty(_linkedTabControlName))
             {
-                var named = parent.Controls.Find(_linkedTabControlName, true).FirstOrDefault() as TabControl;
-                if (named != null)
+                if (parent != null)
                 {
-                    LinkedTabControl = named;
-                    return;
+                    var named = parent.Controls.Find(_linkedTabControlName, true).FirstOrDefault() as TabControl;
+                    if (named != null)
+                    {
+                        LinkedTabControl = named;
+                        return;
+                    }
+                }
+
+                // Design-time: check container components
+                if (Site?.Container != null)
+                {
+                    var named = Site.Container.Components
+                        .OfType<TabControl>()
+                        .FirstOrDefault(tc => tc.Name == _linkedTabControlName);
+                    if (named != null)
+                    {
+                        LinkedTabControl = named;
+                        return;
+                    }
                 }
             }
 
-            var firstTab = parent.Controls.OfType<Control>()
-                .SelectMany(c => GetAllControlsRecursive(c))
-                .OfType<TabControl>()
-                .FirstOrDefault();
-
-            if (firstTab != null)
+            // If no explicit name, auto-link to first TabControl
+            if (IsInDesignMode() && Site?.Container != null)
             {
-                LinkedTabControl = firstTab;
+                var firstTabControl = Site.Container.Components
+                    .OfType<TabControl>()
+                    .FirstOrDefault();
+
+                if (firstTabControl != null)
+                {
+                    _linkedTabControlName = firstTabControl.Name;
+                    LinkedTabControl = firstTabControl;
+                    return;
+                }
+            }
+            else if (parent != null)
+            {
+                var firstTab = parent.Controls.OfType<Control>()
+                    .SelectMany(c => GetAllControlsRecursive(c))
+                    .OfType<TabControl>()
+                    .FirstOrDefault();
+
+                if (firstTab != null)
+                {
+                    _linkedTabControlName = firstTab.Name;
+                    LinkedTabControl = firstTab;
+                }
             }
         }
+
 
         /// <summary>
         /// Retrieves all child controls of the specified root control, including nested children, in a flat array.
@@ -280,40 +364,48 @@ namespace BazthalLib.Controls
             BeginInvoke((MethodInvoker)(() => GenerateButtons()));
         }
 
+
         /// <summary>
-        /// Generates and adds buttons corresponding to each tab page in the linked <see cref="TabControl"/>.
+        /// Generates the tab header buttons for each <see cref="TabPage"/> in the linked <see cref="TabControl"/>.
         /// </summary>
-        /// <remarks>This method clears any existing buttons and creates a new button for each tab page in
-        /// the linked <see cref="TabControl"/>. Each button is styled according to the current theme and settings, and
-        /// clicking a button will trigger the <see cref="TabButton_Click"/> event handler. The method also highlights
-        /// the currently selected tab and refreshes the control to reflect changes.</remarks>
+        /// <remarks>
+        /// This method clears any existing buttons and creates a new <see cref="ThemableButton"/> for each tab page.
+        /// It attaches event handlers to update the button text when the tab page text changes and to handle button clicks.
+        /// The method also highlights the selected tab and refreshes the control's appearance.
+        /// </remarks>
         private void GenerateButtons()
         {
-            if (_linkedTabControl == null) return; // Ensure we have a linked TabControl 
+            if (_linkedTabControl == null) return;
 
-            // Clear existing buttons
+            // Unhook previous handlers from TabPages
+            foreach (TabPage tp in _linkedTabControl.TabPages)
+                tp.TextChanged -= TabPage_TextChanged;
+
             Controls.Clear();
 
-            // Generate buttons for each tab page
             for (int i = 0; i < _linkedTabControl.TabPages.Count; i++)
             {
                 var tabPage = _linkedTabControl.TabPages[i];
+                tabPage.TextChanged += TabPage_TextChanged; // Watch for header changes
+
                 var btn = new ThemableButton
                 {
-                    Text = tabPage.Text,
+                    Text = tabPage.Text.Replace("&", "&&"), // Escape ampersands
                     Tag = i,
                     FlatStyle = FlatStyle.Flat,
                     Margin = new Padding(4),
                     AutoSize = true,
                     EnableBorder = _showButtonBorder,
-                    AllowFocus = false, // Disable focus
-                    AllowClickHighlight = false // Disable Click Highlight since we handle selection highlighting with a custom underline
+                    AllowFocus = false,
+                    AllowClickHighlight = false,
+                    UseAccentForUnderline = !_matchBorderColor,
+                    RoundCorners = _roundedButtonCorners,
+                    CornerRadius = _corenerRadius,
                 };
 
                 btn.FlatAppearance.BorderSize = 0;
-
                 btn.Click += TabButton_Click;
-                //btn.Paint += Button_Paint;
+
                 Controls.Add(btn);
             }
 
@@ -321,6 +413,24 @@ namespace BazthalLib.Controls
             Invalidate();
             Refresh();
         }
+
+
+        /// <summary>
+        /// Handles the <see cref="TabPage.TextChanged"/> event for tab pages in the linked <see cref="TabControl"/>.
+        /// </summary>
+        /// <remarks>
+        /// When the text of a tab page changes, this method regenerates the tab header buttons to reflect the updated text.
+        /// The regeneration occurs only when the control is in design mode.
+        /// </remarks>
+        /// <param name="sender">The source of the event, typically a <see cref="TabPage"/> whose text has changed.</param>
+        /// <param name="e">An <see cref="EventArgs"/> that contains the event data.</param>
+        private void TabPage_TextChanged(object sender, EventArgs e)
+        {
+            // Regenerate buttons when tab text changes
+            if (IsInDesignMode())
+                GenerateButtons();
+        }
+
 
         /// <summary>
         /// Handles the click event for a tab button, selecting the corresponding tab in the linked tab control.

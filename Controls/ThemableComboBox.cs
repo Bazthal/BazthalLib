@@ -15,7 +15,7 @@ namespace BazthalLib.Controls
     {
         #region Fields
 
-        private string _version = "V1.1";
+        private string _version = "V1.2";
         private ThemableListBox _dropdownList;
         private Form _popupHost;
         private NotifyingItemCollection _items;
@@ -145,7 +145,24 @@ namespace BazthalLib.Controls
             }
         }
 
+        /// <summary>
+        /// Gets or sets the text associated with the control.
+        /// </summary>
+        /// <remarks>
+        /// This property is hidden from the designer and editor. Setting the text will update the base control's text and invalidate the control to trigger a repaint.
+        /// </remarks>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public new string Text
+        {
+            get => base.Text;
+            set { base.Text = value; Invalidate(); }
+        }
+
         #endregion Properties
+
+        #region Contstructor
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ThemableComboBox"/> class with default settings.
@@ -153,7 +170,6 @@ namespace BazthalLib.Controls
         /// <remarks>This constructor sets up the <see cref="ThemableComboBox"/> with specific control
         /// styles for optimized painting and user interaction. It also initializes the control's dimensions and item
         /// collections.</remarks>
-        #region Contstructor
         public ThemableComboBox()
         {
             this.SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.Selectable | ControlStyles.OptimizedDoubleBuffer, true);

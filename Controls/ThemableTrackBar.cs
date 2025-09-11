@@ -11,7 +11,7 @@ namespace BazthalLib.Controls
     public class ThemableTrackBar : ThemableControlBase
     {
         #region Fields
-        private readonly string _version = "V1.2";
+        private readonly string _version = "V1.3";
         private int _minimum = 0;
         private int _maximum = 100;
         private int _value = 0;
@@ -26,6 +26,7 @@ namespace BazthalLib.Controls
 
         private bool _dragging = false;
 
+        private int _scrollStep = 1;
 
         #endregion
 
@@ -44,6 +45,16 @@ namespace BazthalLib.Controls
         [Browsable(true)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public new bool EnableBorder { get => base.EnableBorder; set => base.EnableBorder = value; }
+
+        [Browsable(true)]
+        [Category("BazthalLib - Behavior")]
+        [Description("Value change jumps of the trackbar.")]
+        [DefaultValue(1)]
+        public int ScrollStep
+        {
+            get => _scrollStep;
+            set => _scrollStep = value;
+        }
 
         /// <summary>
         /// Gets or sets the minimum value of the trackbar.
@@ -357,7 +368,7 @@ namespace BazthalLib.Controls
         /// <param name="e">The <see cref="MouseEventArgs"/> containing the event data, including the scroll delta.</param>
         protected override void OnMouseWheel(MouseEventArgs e)
         {
-            Value += Math.Sign(e.Delta) * _thumbSize;
+            Value += Math.Sign(e.Delta) * _scrollStep;
             _dragging = false;
             OnScrollCompleted();
         }

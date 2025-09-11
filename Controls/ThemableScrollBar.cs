@@ -10,7 +10,7 @@ namespace BazthalLib.Controls
     public class ThemableScrollBar : ThemableControlBase
     {
         #region Fields and Properties
-        private readonly string _version = "V1.2";
+        private readonly string _version = "V1.3";
         private bool _hoverArrows = true;
         private bool _hovering = false;
         private ThemeColors _themeColors = new();
@@ -176,6 +176,23 @@ namespace BazthalLib.Controls
             }
         }
 
+        /// <summary>
+        /// Gets or sets the text associated with the control.
+        /// </summary>
+        /// <remarks>
+        /// This property is hidden from the designer and code editor to prevent accidental modification,
+        /// as the scroll bar does not display text. Setting this property will update the base control's text
+        /// and trigger a redraw of the control.
+        /// </remarks>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public new string Text
+        {
+            get => base.Text;
+            set { base.Text = value; Invalidate(); }
+        }
+
         public event EventHandler? Scroll;
         public event EventHandler? ValueChanged;
         #endregion Fields and Properties
@@ -317,17 +334,29 @@ namespace BazthalLib.Controls
         {
             if (_dragging)
             {
+                // Calculate track size depending on orientation
                 float trackSize = Orientation == Orientation.Vertical ? TrackArea.Height : TrackArea.Width;
+
+                // Get current thumb rect to know its size
+                Rectangle thumbRect = _renderer.GetThumbRectangle(Orientation, TrackArea, Minimum, Maximum, Value, LargeChange);
+                float thumbSize = Orientation == Orientation.Vertical ? thumbRect.Height : thumbRect.Width;
+
+                // Calculate the relative position of the mouse inside the track
                 int relative = Orientation == Orientation.Vertical
                     ? e.Y - TrackArea.Top - _dragOffset
                     : e.X - TrackArea.Left - _dragOffset;
 
-                relative = Math.Max(0, Math.Min(relative, (int)trackSize - _largeChange));
-                float percent = (float)relative / (trackSize - _largeChange);
-                Value = _minimum + (int)(percent * (_maximum - _minimum - _largeChange));
-            }
+                // Clamp the relative position so the thumb stays within the track
+                relative = Math.Max(0, Math.Min(relative, (int)(trackSize - thumbSize)));
 
+                // Calculate percentage along track
+                float percent = (float)relative / (trackSize - thumbSize);
+
+                // Map that percentage to the value range
+                Value = _minimum + (int)(percent * (_maximum - _minimum - LargeChange));
+            }
         }
+
 
         /// <summary>
         /// Handles the event when the mouse pointer enters the control's client area.

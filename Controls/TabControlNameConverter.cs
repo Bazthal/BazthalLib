@@ -35,34 +35,31 @@ namespace BazthalLib.Controls
         public override bool GetStandardValuesExclusive(ITypeDescriptorContext context)
             => false; // Allow user to also type manually if needed
 
-        /// <summary>
-        /// Returns a collection of standard values representing the names of all <see cref="TabControl"/> instances
-        /// within the form containing the specified control.
-        /// </summary>
-        /// <param name="context">The context in which the type descriptor is invoked. This parameter provides additional information about
-        /// the environment from which this method is called.</param>
-        /// <returns>A <see cref="StandardValuesCollection"/> containing the names of all <see cref="TabControl"/> instances
-        /// within the form. Returns an empty collection if no <see cref="TabControl"/> instances are found or if the
-        /// context is not associated with a <see cref="Control"/>.</returns>
+
         public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext context)
+        /// <summary>
+        /// Retrieves a collection of standard values representing the names of all <see cref="TabControl"/> components
+        /// within the designer host container. This is used to provide a list of available <see cref="TabControl"/> names
+        /// for selection in design-time property grids.
+        /// </summary>
+        /// <param name="context">An <see cref="ITypeDescriptorContext"/> that provides a format context. May be <see langword="null"/>.</param>
+        /// <returns>
+        /// A <see cref="TypeConverter.StandardValuesCollection"/> containing the names of all <see cref="TabControl"/> components
+        /// in the container, or an empty collection if no container is available.
+        /// </returns>
         {
-            if (context?.Instance is Control control)
-            {
-                var form = control.FindForm();
-                if (form != null)
-                {
-                    var tabControls = form.Controls.OfType<Control>()
-                        .SelectMany(c => GetAllControlsRecursive(c))
-                        .OfType<TabControl>()
-                        .Select(t => t.Name)
-                        .Where(n => !string.IsNullOrEmpty(n))
-                        .ToList();
+            if (context?.Container == null)
+                return new StandardValuesCollection(Array.Empty<string>());
 
-                    return new StandardValuesCollection(tabControls);
-                }
-            }
+            // Enumerate all TabControl components in the designer host container
+            var tabNames = context.Container.Components
+                .OfType<TabControl>()
+                .Where(tc => !string.IsNullOrEmpty(tc.Name))
+                .Select(tc => tc.Name)
+                .OrderBy(name => name)
+                .ToList();
 
-            return new StandardValuesCollection(Array.Empty<string>());
+            return new StandardValuesCollection(tabNames);
         }
 
         /// <summary>

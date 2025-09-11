@@ -12,7 +12,7 @@ namespace BazthalLib.Controls
         private readonly ThemableProgressBar progressBar;
         private string _lastProgressText = "";
         private string? _lastEtaText = null;
-        private readonly string _version = "V1.1";
+        private readonly string _version = "V1.2";
         private readonly ThemableButton cancelButton;
         private readonly CancellationTokenSource _cts = new();
         public CancellationToken Token => _cts.Token;
@@ -103,6 +103,37 @@ namespace BazthalLib.Controls
         /// <param name="total">The total count representing the full extent of the task.</param>
         /// <param name="eta">The estimated time of arrival (ETA) for task completion. If null or empty, the last known ETA is used.</param>
         /// <param name="forceUiUpdate">If <see langword="true"/>, forces an immediate update of the UI to reflect the current progress.</param>
+        public void SetProgress(string processing, string type, int current, int total, string? eta = null, bool forceUiUpdate = false)
+        {
+            if (InvokeRequired)
+            {
+                this.Invoke(() => SetProgress(processing, type, current, total, eta, forceUiUpdate));
+                return;
+            }
+
+            // Cache and reuse last valid ETA
+            if (!string.IsNullOrEmpty(eta))
+                _lastEtaText = eta;
+
+            string etaText = _lastEtaText ?? "ETA: --:--";
+            string newText = $"{processing} {type} {current} of {total}  |  {etaText}";
+
+            if (newText != _lastProgressText)
+            {
+                statusLabel.Text = newText;
+                _lastProgressText = newText;
+            }
+
+            if (progressBar.Style != ProgressBarStyle.Marquee)
+            {
+                progressBar.Maximum = total;
+                progressBar.Value = current;
+            }
+
+             if (forceUiUpdate)
+            Application.DoEvents();
+        }
+
         public void SetProgress(string type, int current, int total, string? eta = null, bool forceUiUpdate = false)
         {
             if (InvokeRequired)
@@ -130,8 +161,8 @@ namespace BazthalLib.Controls
                 progressBar.Value = current;
             }
 
-             if (forceUiUpdate)
-            Application.DoEvents();
+            if (forceUiUpdate)
+                Application.DoEvents();
         }
 
         /// <summary>
@@ -149,6 +180,7 @@ namespace BazthalLib.Controls
             }
 
             progressBar.Style = ProgressBarStyle.Marquee;
+            Invalidate(); // Ensure the progress bar is redrawn
             statusLabel.Text = message;
             Application.DoEvents();
         }

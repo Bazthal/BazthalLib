@@ -12,7 +12,7 @@ namespace BazthalLib.Controls
     {
 
         #region Fields and Properties
-        private string _version = "V1.1";
+        private string _version = "V1.2";
         private ThemableTextBox numericUpDown;
         private Panel upButton;
         private Panel downButton;
@@ -109,6 +109,7 @@ namespace BazthalLib.Controls
         #endregion Fields and Properties
 
         #region Constructor
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ThemableNumericUpDown"/> class.
         /// </summary>
@@ -132,6 +133,12 @@ namespace BazthalLib.Controls
             };
 
             numericUpDown.KeyPress += TextBox_KeyPress;
+            numericUpDown.TextChanged += TextBox_TextChanged;
+
+            numericUpDown.MouseWheel += (s, e) =>
+            {
+                OnMouseWheel(e);
+            };
 
             upButton = new Panel
             {
@@ -200,7 +207,6 @@ namespace BazthalLib.Controls
                         // If parsing fails, reset to the last valid value
                         textBox.Text = Value.ToString();
                     }
-                    textBox.Text = Value.ToString();
                 }
                 e.Handled = true;
                 return;
@@ -218,6 +224,35 @@ namespace BazthalLib.Controls
         }
 
         /// <summary>
+        /// Handles the <see cref="ThemableTextBox.TextChanged"/> event to validate and update the numeric value.
+        /// </summary>
+        /// <remarks>This method ensures that the text entered in the <see cref="ThemableTextBox"/> is
+        /// parsed as a valid decimal value. If the input is valid, the value is clamped between the predefined minimum
+        /// and maximum limits. If the input is invalid, the text box is reset to the current value. Empty input is
+        /// allowed to let the user clear the text box.</remarks>
+        /// <param name="sender">The source of the event, expected to be a <see cref="ThemableTextBox"/>.</param>
+        /// <param name="e">An <see cref="EventArgs"/> that contains the event data.</param>
+        private void TextBox_TextChanged(object sender, EventArgs e)
+        {
+            if (sender is ThemableTextBox textBox)
+            {
+                if (decimal.TryParse(textBox.Text, out decimal value))
+                {
+                    Value = Math.Max(_minimum, Math.Min(_maximum, value));
+                }
+                else if (string.IsNullOrEmpty(textBox.Text))
+                {
+                    //Do nothing here let the user delete all digits 
+                }
+                else
+                {
+                    textBox.Text = Value.ToString();
+                    textBox.SelectionStart = textBox.Text.Length;
+                }
+            }
+        }
+
+        /// <summary>
         /// Paints the border of the control using the specified graphics context.
         /// </summary>
         /// <remarks>This method overrides the base <see cref="Control.OnPaint"/> method to draw a border
@@ -230,6 +265,30 @@ namespace BazthalLib.Controls
             using var borderPen = new Pen(BorderColor);
             e.Graphics.DrawRectangle(borderPen, 0, 0, Width - 1, Height - 1);
 
+        }
+
+        /// <summary>
+        /// Handles the mouse wheel event to increment or decrement the numeric value displayed in the control.
+        /// </summary>
+        /// <remarks>Scrolling the mouse wheel upward increases the value by 1, up to the maximum allowed
+        /// value.  Scrolling downward decreases the value by 1, down to the minimum allowed value.  The current value
+        /// is determined by parsing the text in the control.</remarks>
+        /// <param name="e">A <see cref="MouseEventArgs"/> that contains the event data, including the direction and magnitude of the
+        /// mouse wheel scroll.</param>
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            base.OnMouseWheel(e);
+            if (decimal.TryParse(numericUpDown.Text, out decimal baseVal))
+            {
+                if (e.Delta > 0)
+                {
+                    Value = Math.Min(_maximum, baseVal + 1);
+                }
+                else if (e.Delta < 0)
+                {
+                    Value = Math.Max(_minimum, baseVal - 1);
+                }
+            }
         }
 
         /// <summary>
@@ -275,6 +334,7 @@ namespace BazthalLib.Controls
         #endregion Methods and Events
 
         #region IThemableControl Implementation
+
         /// <summary>
         /// Applies the specified theme colors to the control.
         /// </summary>

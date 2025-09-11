@@ -192,7 +192,7 @@ namespace BazthalLib.Systems.IO
         /// <summary>
         /// Creates a backup of the specified file and manages the number of backup files.
         /// </summary>
-        /// <remarks>The method moves the original file to a new location with a timestamp appended to its
+        /// <remarks>The method copies the original file to a new location with a timestamp appended to its
         /// name, effectively creating a backup. It then ensures that only the specified number of recent backups are
         /// retained, deleting older ones.</remarks>
         /// <param name="origFile">The path of the original file to back up. This parameter cannot be null or empty.</param>
@@ -208,9 +208,10 @@ namespace BazthalLib.Systems.IO
             string dest = Path.Combine(folder, $"{fileName}_{DateTime.Now:yyyyMMdd_HHmmss}{extention}");
 
             DebugUtils.Log("Backup", "Setup", $"Orignal File:{origFile}\nFolder: {folder}\nFileName: {fileName}\nExtention: {extention}\nDestination: {dest}");
-            try { System.IO.File.Move(origFile, dest); }
+            try { System.IO.File.Copy(origFile, dest); }
             catch (Exception ex) { DebugUtils.Log("Backup", "Backup Old", $"Unable to backup old file - {ex.Message}");   }
 
+            if (string.IsNullOrWhiteSpace(folder)) folder = ".";
             var backups = System.IO.Directory.GetFiles(folder, $"{fileName}_*{extention}")
                 .OrderByDescending(f => System.IO.File.GetCreationTime(f))
                 .Skip(maxBackups);
@@ -221,6 +222,23 @@ namespace BazthalLib.Systems.IO
                 catch (Exception ex ){ DebugUtils.Log("Backup", "Prune Old", $"Unable to delete old file {ex.Message}"); }
 
             
+        }
+
+        /// <summary>
+        /// Creates a backup of the specified file
+        /// </summary>
+        /// <remarks>The method copies the original file to a new location with a migragted label timestamp appended to its
+        /// name, effectively creating a backup.</remarks>
+        /// <param name="oldFile">The path of the original file to back up. This parameter cannot be null or empty.</param>
+        public static void MigrationBackUp(string oldFile)
+        {
+            string folder = Path.GetDirectoryName (oldFile) ?? ".";
+            string fileName = Path.GetFileNameWithoutExtension(oldFile);
+            string extention = Path.GetExtension (oldFile);
+
+            string dest = Path.Combine(folder, $"{fileName}-Migrated_{DateTime.Now:yyyyMMdd_HHmmss}{extention}");
+            try { System.IO.File.Copy(oldFile, dest); }
+            catch (Exception ex) { DebugUtils.Log("Migration Backup", "Failed", ex.Message); }
         }
     }
 

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Text.Json.Serialization;
@@ -14,7 +13,7 @@ namespace BazthalLib.Controls
     public class ThemeColorsSetter : UserControl
     {
         #region Fields and Properties
-        private string _version = "V1.1";
+        private string _version = "V1.2";
         private bool _useThemeColors = true;
         private ThemeColors _themeColors = new();
         private bool _enableBorder = false;
@@ -413,25 +412,27 @@ namespace BazthalLib.Controls
         }
 
         /// <summary>
-        /// Attaches event handlers to UI elements for color selection and theme management actions.
+        /// Subscribes to event handlers for various UI elements to enable interaction with theme color selection and
+        /// management.
         /// </summary>
-        /// <remarks>This method sets up click event handlers for various buttons that allow users to pick
-        /// colors for different UI elements and to save or load theme configurations. The event handlers invoke methods
-        /// to perform the corresponding actions when the buttons are clicked.</remarks>
+        /// <remarks>This method hooks mouse and click events for buttons that allow users to pick colors
+        /// for different theme elements,  save the current theme to a JSON file, and load a theme from a JSON file. The
+        /// event handlers are configured to  perform specific actions based on user interaction, such as opening file
+        /// dialogs or applying selected colors.</remarks>
         private void HookEvents()
         {
-            pickBackColorButton.Click += (s, e) => PickColor("BackColor");
-            pickForeColorButton.Click += (s, e) => PickColor("ForeColor");
-            pickAccentColorButton.Click += (s, e) => PickColor("AccentColor");
-            pickBorderColorButton.Click += (s, e) => PickColor("BorderColor");
-            pickSelectedForeColorButton.Click += (s, e) => PickColor("SelectedForeColor");
-            pickSelectedBackColorButton.Click += (s, e) => PickColor("SelectedBackColor");
-            pickDisabledColorButton.Click += (s, e) => PickColor("DisabledColor");
+            pickBackColorButton.MouseUp += (s, e) => HandleColorClick("BackColor", e);
+            pickForeColorButton.MouseUp += (s, e) => HandleColorClick("ForeColor", e);
+            pickAccentColorButton.MouseUp += (s, e) => HandleColorClick("AccentColor", e);
+            pickBorderColorButton.MouseUp += (s, e) => HandleColorClick("BorderColor", e);
+            pickSelectedForeColorButton.MouseUp += (s, e) => HandleColorClick("SelectedForeColor", e);
+            pickSelectedBackColorButton.MouseUp += (s, e) => HandleColorClick("SelectedBackColor", e);
+            pickDisabledColorButton.MouseUp += (s, e) => HandleColorClick("DisabledColor", e);
+
 
             saveThemeButton.Click += (s, e) => { if (string.IsNullOrWhiteSpace(_configFilePath)) { _configFilePath = Files.SaveFile("", "JSON files (*.json) | *.json", "Save Theme Colors"); } SaveThemetoJson(); };
             loadThemeButton.Click += (s, e) => { if (string.IsNullOrWhiteSpace(_configFilePath)) { _configFilePath = Files.ChooseFile("", "JSON files (*.json) | *.json", "Load Theme Colors"); } LoadThemeFromJson(); };
 
-            //applyColorsButton.Click += (s, e) => SetColors();
 
         }
 
@@ -579,6 +580,29 @@ namespace BazthalLib.Controls
         }
 
         /// <summary>
+        /// Handles a color selection event triggered by a mouse click.
+        /// </summary>
+        /// <remarks>If the left mouse button is clicked, the method opens a color picker for the
+        /// specified color. If the right mouse button is clicked, the method resets the color to its default
+        /// value.</remarks>
+        /// <param name="color">The name or identifier of the color associated with the click event.</param>
+        /// <param name="e">The mouse event arguments containing details about the click, such as the button pressed.</param>
+        private void HandleColorClick(string color, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                // Open color picker
+                PickColor(color);
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                // Reset to default
+                ResetColor(color);
+            }
+        }
+
+
+        /// <summary>
         /// Allows the user to select a color and applies it to the specified theme element.
         /// </summary>
         /// <remarks>This method opens a color picker dialog for the user to select a color. The selected
@@ -646,6 +670,65 @@ namespace BazthalLib.Controls
                 Refresh();
             }
         }
+
+        /// <summary>
+        /// Resets the specified theme color to its default value.
+        /// </summary>
+        /// <remarks>This method updates the corresponding theme color to its default value and refreshes
+        /// the UI  to reflect the changes. If a configuration file path is set and save/load functionality is 
+        /// disabled, the updated theme settings are saved to a JSON file.</remarks>
+        /// <param name="color">The name of the theme color to reset. Valid values include "BackColor", "ForeColor",  "AccentColor",
+        /// "BorderColor", "SelectedForeColor", "SelectedBackColor", and "DisabledColor".</param>
+        private void ResetColor(string color)
+        {
+            DebugUtils.Log("ResetColor", "ThemeColorsSetter", $"Resetting {color} to default.");
+
+            switch (color)
+            {
+                case "BackColor":
+                    _themeColors.BackColor = SystemColors.Control;
+                    BackThemeColor = SystemColors.Control;
+                    SetLabelText(backColorLabel, "Background Color [ Control ]");
+                    break;
+                case "ForeColor":
+                    _themeColors.ForeColor = SystemColors.ControlText;
+                    ForeThemeColor = SystemColors.ControlText;
+                    SetLabelText(foreColorLabel, "Foreground Color [ ControlText ]");
+                    break;
+                case "AccentColor":
+                    _themeColors.AccentColor = Color.DodgerBlue;
+                    AccentThemeColor = Color.DodgerBlue;
+                    SetLabelText(accentColorLabel, "Accent Color [ DodgerBlue ]");
+                    break;
+                case "BorderColor":
+                    _themeColors.BorderColor = SystemColors.ActiveBorder;
+                    BorderThemeColor = SystemColors.ActiveBorder;
+                    SetLabelText(borderColorLabel, "Border Color [ ActiveBorder ]");
+                    break;
+                case "SelectedForeColor":
+                    _themeColors.SelectedItemForeColor = Color.Blue;
+                    SelectedForeThemeColor = Color.Blue;
+                    SetLabelText(selectedForeColorLabel, "Selected Item Fore [ Blue ]");
+                    break;
+                case "SelectedBackColor":
+                    _themeColors.SelectedItemBackColor = Color.Aqua;
+                    SelectedBackThemeColor = Color.Aqua;
+                    SetLabelText(selectedBackColorLabel, "Selected Item Back [ Auqa ]");
+                    break;
+                case "DisabledColor":
+                    _themeColors.DisabledColor = SystemColors.ControlDark;
+                    DisabledThemeColor = SystemColors.ControlDark;
+                    SetLabelText(disabledColorLabel, "Disabled Color [ ConntrolDark ]");
+                    break;
+            }
+
+            SetColors();
+            if (!_showSaveLoad && !string.IsNullOrWhiteSpace(_configFilePath))
+                SaveThemetoJson();
+            Invalidate();
+            Refresh();
+        }
+
 
         #endregion Methods and Events
 
