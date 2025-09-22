@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using BazthalLib.UI;
+using BazthalLib.Events;
 
 
 namespace BazthalLib.Controls
@@ -14,7 +15,7 @@ namespace BazthalLib.Controls
     public class ThemableListBox : ThemableControlBase
     {
         #region Fields
-        private readonly string _version = "V1.3";
+        private readonly string _version = "V1.4";
         private readonly ThemableScrollBarRenderer _scrollRenderer = new();
         private NotifyingItemCollection _items;
         private readonly ListBox _hiddenListBox;
@@ -23,10 +24,10 @@ namespace BazthalLib.Controls
         private int _itemPadding = 5;
         private int _itemHeight = 17;
         private int _scrollValue = 0;
-        private int _hoverIndex = -1; 
+        private int _hoverIndex = -1;
         private int _horizontalScrollValue = 0;
         private int _maxItemWidth = 0;
-      //  private int _selectedIndex = -1;
+        //  private int _selectedIndex = -1;
         private bool _allowHoverHighlight = false;
         private int _topPadding = 2;
         private int _bottomPadding = 2;
@@ -49,6 +50,23 @@ namespace BazthalLib.Controls
         private DateTime _lastKeyPressTime;
         private int _lastSearchIndex = -1;
 
+        private int _dropIndex = -1;
+        private List<int> _dragIndices = new();
+
+        
+        private const string ReorderFormat = "BazthalLib.Controls.ThemableListBox/Reorder";
+        private Point _dragStartPoint;
+        private bool _dragPending;
+        private Bitmap? _dragGhost;
+        private Point _ghostOffset;
+        private float _dragGhostOpacity = 0.5f;
+        private Point _ghostPosition;
+
+
+        private DragGhostSizeMode _dragGhostSizeMode = DragGhostSizeMode.FillControl;
+        private int _dragGhostFixedWidth = 200;
+
+
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         internal bool SuppressDefaultItemDrawing { get; set; } = false;
@@ -63,9 +81,25 @@ namespace BazthalLib.Controls
         {
             PrefixOnly,
             WordPrefix,
-            Substring     
+            Substring
         }
 
+        /// <summary>
+        /// Specifies the sizing behavior of a drag ghost element during drag-and-drop operations.
+        /// </summary>
+        /// <remarks>This enumeration defines how the drag ghost adjusts its size relative to the control
+        /// or content being dragged: <list type="bullet"> <item> <term><see cref="FillControl"/></term>
+        /// <description>The drag ghost resizes to fill the dimensions of the control being dragged.</description>
+        /// </item> <item> <term><see cref="FitContent"/></term> <description>The drag ghost adjusts its size to fit the
+        /// content being dragged, maintaining its natural dimensions.</description> </item> <item> <term><see
+        /// cref="FixedWidth"/></term> <description>The drag ghost maintains a fixed width, regardless of the control or
+        /// content being dragged.</description> </item> </list></remarks>
+        public enum DragGhostSizeMode
+        {
+            FillControl,
+            FitContent,
+            FixedWidth
+        }
 
         #endregion Fields
 
@@ -168,6 +202,106 @@ namespace BazthalLib.Controls
         }
 
         /// <summary>
+        /// Gets or sets a value indicating whether the focus rectangle should be drawn.
+        /// </summary>
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [Description("Whether or not to draw the focus rectangle")]
+        [DefaultValue(true)]
+        public bool DrawFocusRectangle { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether items can be moved using the Ctrl key combined with the Up or Down
+        /// arrow keys.
+        /// </summary>
+        [Browsable(true)]
+        [Category("BazthalLib - Behavior")]
+        [Description("Allows moving items with Ctrl+Up/Down arrow keys.")]
+        [DefaultValue(false)]
+        public bool AllowCtrlMoveitems { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether items can be reordered by dragging with the mouse.
+        /// </summary>
+        /// <remarks>When enabled, users can rearrange items interactively by dragging them with the
+        /// mouse.  Ensure that the control supports drag-and-drop operations for this property to take
+        /// effect.</remarks>
+        [Browsable(true)]
+        [Category("BazthalLib - Behavior")]
+        [Description("Allows items to be reordered by dragging with the mouse")]
+        [DefaultValue(false)]
+        public bool AllowDragReorder { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the accent color is used for the drag reordering line.
+        /// </summary>
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [Description("Whether to use the border color or accent color for the drag reordering")]
+        [DefaultValue(false)]
+        public bool UseAccentForReorderLine { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to display a ghost representation of the selected item(s) during a
+        /// drag operation.
+        /// </summary>
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [Description("Whether to show the ghost of the selected item(s)")]
+        [DefaultValue(false)]
+        public bool ShowDragGhost { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the opacity of the drag ghost when it is displayed.
+        /// </summary>
+        /// <remarks>The opacity value is clamped to the range of 0.1 to 1.0. Setting a value outside this
+        /// range  will automatically adjust it to the nearest valid value.</remarks>
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [Description("Opacity of the drag ghost when shown")]
+        [DefaultValue(0.5f)]
+        public float DragGhostOpacity
+        {
+            get => _dragGhostOpacity;
+            set 
+            {
+                float clamped = Math.Max(0.1f, Math.Min(value, 1f));
+                _dragGhostOpacity = clamped; Invalidate(); 
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the mode that determines how the drag ghost width is calculated.
+        /// </summary>
+        /// <remarks>This property controls the appearance of the drag ghost by specifying how its width
+        /// is determined.  Changing this property will cause the control to be redrawn.</remarks>
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [Description("Controls how the drag ghost width is determined.")]
+        [DefaultValue(DragGhostSizeMode.FillControl)]
+        public DragGhostSizeMode DragGhostMode
+        {
+            get => _dragGhostSizeMode;
+            set { _dragGhostSizeMode = value; Invalidate(); }
+        }
+
+        /// <summary>
+        /// Gets or sets the width, in pixels, of the drag ghost when <see cref="DragGhostMode"/> is set to
+        /// <c>FixedWidth</c>.
+        /// </summary>
+        /// <remarks>Setting this property to a value less than 50 will automatically adjust it to 50. 
+        /// Changes to this property will trigger a redraw of the control.</remarks>
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [Description("When DragGhostMode is FixedWidth, determines the ghost width in pixels.")]
+        [DefaultValue(200)]
+        public int DragGhostFixedWidth
+        {
+            get => _dragGhostFixedWidth;
+            set { _dragGhostFixedWidth = Math.Max(50, value); Invalidate(); }
+        }
+
+        /// <summary>
         /// Gets or sets a value indicating whether type-to-search always selects the first match  instead of cycling
         /// through matches.
         /// </summary>
@@ -224,7 +358,7 @@ namespace BazthalLib.Controls
         /// The first selected item in the list, or <c>null</c> if no selection exists.
         /// </value>
         [Browsable(false)]
-        [DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public object? SelectedItem
         {
             get
@@ -253,7 +387,6 @@ namespace BazthalLib.Controls
                 OnSelectedIndexChanged(EventArgs.Empty);
             }
         }
-
 
         /// <summary>
         /// Gets or sets a value indicating whether multi-select behavior is enabled, allowing the use of  Ctrl or Shift
@@ -299,7 +432,9 @@ namespace BazthalLib.Controls
         [DefaultValue(1000)]
         public int SearchTimeout { get; set; } = 1000;
 
-
+        /// <summary>
+        /// Gets the current search buffer used to store the most recent search query or input.
+        /// </summary>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string CurrentSearchBuffer => _searchBuffer;
@@ -346,7 +481,7 @@ namespace BazthalLib.Controls
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
         [Editor("System.Windows.Forms.Design.StringCollectionEditor, System.Design", typeof(System.Drawing.Design.UITypeEditor))]
         [Category("Data")]
-        [Description("The items displayed in the list.")]              
+        [Description("The items displayed in the list.")]
         public NotifyingItemCollection Items { get => _items; set { _items = value; Invalidate(); } }
 
         /// <summary>
@@ -387,7 +522,6 @@ namespace BazthalLib.Controls
             get => _allowHoverHighlight;
             set { _allowHoverHighlight = value; Invalidate(); }
         }
-
 
         /// <summary>
         /// Gets or sets a value indicating whether scrollbar arrows are visible only on hover or always visible.
@@ -432,9 +566,38 @@ namespace BazthalLib.Controls
 
         protected virtual void OnSelectedIndexChanged(EventArgs e) => SelectedIndexChanged?.Invoke(this, e);
 
-        #endregion
+        /// <summary>
+        /// Occurs when items in the list box are reordered, either moved up or down.
+        /// </summary>
+        /// <remarks>This event is triggered whenever the order of items in the list box changes. 
+        /// Subscribers can use the event arguments to determine the details of the reordering operation.</remarks>
+        [Category("BazthalLib - Behaviour")]
+        [Description("Raised when items are moved up or down the list box")]
+        public event EventHandler<ItemsReorderedEventArgs>? ItemsReordered;
+
+        /// <summary>
+        /// Occurs when the drag ghost needs to be drawn, allowing for full custom rendering.
+        /// </summary>
+        /// <remarks>This event is triggered during the rendering of the drag ghost, providing an
+        /// opportunity  to customize its appearance. Subscribers can use the event arguments to access the  graphics
+        /// context and item details for rendering.</remarks>
+        [Category("BazthalLib - Appearance")]
+        [Description("Raised when the drag ghost needs to be drawn. Allows full custom rendering.")]
+        public event DrawItemEventHandler? DrawDragGhost;
+
+        /// <summary>
+        /// Occurs when files are dropped onto the list box.
+        /// </summary>
+        /// <remarks>This event is triggered when one or more files are dragged and dropped onto the list
+        /// box. Subscribers can handle this event to process the dropped files.</remarks>
+        [Category("BazthalLib - Behaviour")]
+        [Description("Raised when files are dropped onto the list box")]
+        public event EventHandler<FilesDroppedEventArgs>? FilesDropped;
+
+        #endregion Events
 
         #region Constructor
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ThemableListBox"/> class with default settings.
         /// </summary>
@@ -492,7 +655,7 @@ namespace BazthalLib.Controls
         }
 
 
-        #endregion Events
+        #endregion Constructor
 
         #region Event Handlers
 
@@ -516,10 +679,10 @@ namespace BazthalLib.Controls
         {
             int index = ((e.Y - _topPadding) / _itemHeight) + _scrollValue;
             if (_hoverIndex != index && index < Items.Count)
-                {
-                    _hoverIndex = index;
-                    Invalidate();
-                } 
+            {
+                _hoverIndex = index;
+                Invalidate();
+            }
         }
 
         #endregion Event Handlers
@@ -547,24 +710,30 @@ namespace BazthalLib.Controls
         }
 
         /// <summary>
-        /// Handles key press events to provide navigation, selection, and other interactions within the control.
+        /// Handles key press events to provide custom keyboard navigation and selection behavior.
         /// </summary>
-        /// <remarks>This method supports various key-based interactions: <list type="bullet"> <item>
-        /// <description>Arrow keys (<see cref="Keys.Up"/> and <see cref="Keys.Down"/>) navigate through items one at a
-        /// time.</description> </item> <item> <description>Page navigation keys (<see cref="Keys.PageUp"/> and <see
-        /// cref="Keys.PageDown"/>) navigate by the number of visible items.</description> </item> <item>
-        /// <description><see cref="Keys.Home"/> and <see cref="Keys.End"/> jump to the first and last items,
-        /// respectively.</description> </item> <item> <description><see cref="Keys.Enter"/> and <see
-        /// cref="Keys.Escape"/> trigger the <see cref="EnterPressed"/> and <see cref="EscapePressed"/>
-        /// events.</description> </item> <item> <description><see cref="Keys.Back"/> and <see cref="Keys.Delete"/>
-        /// clear or modify the search buffer.</description> </item> <item> <description>If <see
-        /// cref="EnableMultiSelect"/> is <see langword="true"/>, modifier keys like <see cref="Keys.Control"/> and <see
-        /// cref="Keys.Shift"/> allow multi-selection.</description> </item> </list> The method also adjusts the scroll
-        /// position to ensure the selected item remains visible and raises the <see cref="OnSelectedIndexChanged"/>
-        /// event when the selection changes.</remarks>
-        /// <param name="e">A <see cref="KeyEventArgs"/> that contains the event data, including the key pressed and modifier keys.</param>
+        /// <remarks>This method extends the default key handling behavior to support additional features:
+        /// <list type="bullet"> <item> <description>If <see cref="AllowCtrlMoveitems"/> is <see langword="true"/> and
+        /// the Control key is held, pressing the Up or Down arrow keys moves the selected items.</description> </item>
+        /// <item> <description>If <see cref="EnableMultiSelect"/> is <see langword="true"/> and the Control key is
+        /// held, pressing the 'A' key selects all items.</description> </item> <item> <description>Handles standard
+        /// navigation keys (e.g., Up, Down, PageUp, PageDown, Home, End) to update the selection index.</description>
+        /// </item> <item> <description>Raises the <see cref="EnterPressed"/> event when the Enter key is
+        /// pressed.</description> </item> <item> <description>Raises the <see cref="EscapePressed"/> event when the
+        /// Escape key is pressed.</description> </item> </list> When multi-selection is enabled, the Shift key allows
+        /// range selection, and the Control key allows toggling individual selections.</remarks>
+        /// <param name="e">A <see cref="KeyEventArgs"/> that contains the event data.</param>
         protected override void OnKeyDown(KeyEventArgs e)
         {
+
+
+            if (AllowCtrlMoveitems && e.Control && (e.KeyCode == Keys.Up || e.KeyCode == Keys.Down))
+            {
+                MoveSelectedItems(e.KeyCode == Keys.Up ? -1 : 1);
+                e.Handled = true;
+                return;
+            }
+
             if (EnableMultiSelect && e.Control && e.KeyCode == Keys.A)
             {
                 SelectAll();
@@ -575,71 +744,32 @@ namespace BazthalLib.Controls
             {
                 base.OnKeyDown(e);
 
+
                 if (Items.Count == 0)
                     return;
+
 
                 int newIndex = _lastSelectedIndex == -1 ? 0 : _lastSelectedIndex;
                 int visibleCount = VisibleItems;
 
+
                 switch (e.KeyCode)
                 {
-                    case Keys.Up:
-                        newIndex = Math.Max(0, newIndex - 1);
-                        break;
-
-                    case Keys.Down:
-                        newIndex = Math.Min(Items.Count - 1, newIndex + 1);
-                        break;
-
-                    case Keys.PageUp:
-                        newIndex = Math.Max(0, newIndex - visibleCount);
-                        break;
-
-                    case Keys.PageDown:
-                        newIndex = Math.Min(Items.Count - 1, newIndex + visibleCount);
-                        break;
-
-                    case Keys.Home:
-                        newIndex = 0;
-                        break;
-
-                    case Keys.End:
-                        newIndex = Items.Count - 1;
-                        break;
-
-                    case Keys.Enter:
-                        EnterPressed?.Invoke(this, EventArgs.Empty);
-                        e.Handled = true;
-                        return;
-
-                    case Keys.Escape:
-                        EscapePressed?.Invoke(this, EventArgs.Empty);
-                        e.Handled = true;
-                        return;
-
-                    case Keys.Back:               
-                        HandleBackspace();       
-                        e.Handled = true;
-                        return;
-
-                    case Keys.Delete:          
-                        ClearSearchBuffer();
-                        e.Handled = true;
-                        return;
-                    default:
-                        return;
+                    case Keys.Up: newIndex = Math.Max(0, newIndex - 1); break;
+                    case Keys.Down: newIndex = Math.Min(Items.Count - 1, newIndex + 1); break;
+                    case Keys.PageUp: newIndex = Math.Max(0, newIndex - visibleCount); break;
+                    case Keys.PageDown: newIndex = Math.Min(Items.Count - 1, newIndex + visibleCount); break;
+                    case Keys.Home: newIndex = 0; break;
+                    case Keys.End: newIndex = Items.Count - 1; break;
+                    case Keys.Enter: EnterPressed?.Invoke(this, EventArgs.Empty); e.Handled = true; return;
+                    case Keys.Escape: EscapePressed?.Invoke(this, EventArgs.Empty); e.Handled = true; return;
+                    default: return;
                 }
+
 
                 if (EnableMultiSelect)
                 {
-                    if (ModifierKeys.HasFlag(Keys.Control | Keys.Shift) && _lastSelectedIndex != -1)
-                    {
-                        int start = Math.Min(_lastSelectedIndex, newIndex);
-                        int end = Math.Max(_lastSelectedIndex, newIndex);
-                        for (int i = start; i <= end; i++)
-                            _selectedIndices.Add(i);
-                    }
-                    else if (ModifierKeys.HasFlag(Keys.Shift) && _lastSelectedIndex != -1)
+                    if (ModifierKeys.HasFlag(Keys.Shift) && _lastSelectedIndex != -1)
                     {
                         _selectedIndices.Clear();
                         int start = Math.Min(_lastSelectedIndex, newIndex);
@@ -663,19 +793,8 @@ namespace BazthalLib.Controls
                     _selectedIndices.Add(newIndex);
                 }
 
+
                 _lastSelectedIndex = newIndex;
-
-                if (newIndex < _scrollValue)
-                {
-                    _scrollValue = newIndex;
-                }
-                else if (newIndex >= _scrollValue + visibleCount)
-                {
-                    _scrollValue = newIndex - visibleCount + 1;
-                }
-
-                _scrollValue = Math.Max(0, Math.Min(_scrollValue, ScrollMax));
-
                 Invalidate();
                 OnSelectedIndexChanged(EventArgs.Empty);
                 e.Handled = true;
@@ -695,68 +814,44 @@ namespace BazthalLib.Controls
         }
 
         /// <summary>
-        /// Handles the mouse down event for the control, enabling interaction with scroll buttons and item selection.
+        /// Handles the mouse down event for the control, enabling focus, drag-and-drop reordering,  and item selection
+        /// based on the mouse input and modifier keys.
         /// </summary>
-        /// <remarks>This method provides functionality for vertical and horizontal scrolling when the
-        /// corresponding scroll buttons are clicked. It also supports item selection, including multi-selection with
-        /// modifier keys such as <see cref="Keys.Control"/> and <see cref="Keys.Shift"/>.  - Clicking the vertical
-        /// scroll buttons adjusts the vertical scroll position. - Clicking the horizontal scroll buttons adjusts the
-        /// horizontal scroll position, if enabled. - Clicking within the content area selects an item based on the
-        /// mouse position. Multi-selection is supported when enabled.  The method ensures the control gains focus when
-        /// clicked and invalidates the control to trigger a redraw after state changes.</remarks>
-        /// <param name="e">The <see cref="MouseEventArgs"/> containing the event data, including the mouse location and button state.</param>
+        /// <remarks>This method supports drag-and-drop reordering if <see cref="AllowDragReorder"/> is
+        /// enabled and the left mouse button is clicked once. It also manages item selection, supporting
+        /// multi-selection when <see cref="EnableMultiSelect"/> is enabled.  The selection behavior depends on the
+        /// state of the modifier keys: <list type="bullet"> <item><description>Holding the <see cref="Keys.Shift"/> key
+        /// selects a range of items between the last selected index and the current index.</description></item>
+        /// <item><description>Holding the <see cref="Keys.Control"/> key toggles the selection state of the clicked
+        /// item.</description></item> <item><description>Clicking without modifier keys clears the current selection
+        /// and selects the clicked item.</description></item> </list> If the click occurs outside the bounds of the
+        /// selectable items, no action is taken.</remarks>
+        /// <param name="e">A <see cref="MouseEventArgs"/> that contains the event data, including the mouse button, click count, and
+        /// location.</param>
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
             Focus();
 
-            if (_vScrollBar != null && _vScrollBar.Visible)
-            {
-                var upBtn = new Rectangle(Width - 15, 0, 15, 15);
-                var downBtn = new Rectangle(Width - 15, Height - 15, 15, 15);
 
-                if (upBtn.Contains(e.Location))
-                {
-                    _scrollValue = Math.Max(0, _scrollValue - 1);
-                    Invalidate();
-                    return;
-                }
-                else if (downBtn.Contains(e.Location))
-                {
-                    _scrollValue = Math.Min(ScrollMax, _scrollValue + 1);
-                    Invalidate();
-                    return;
-                }
+            if (AllowDragReorder && e.Button == MouseButtons.Left && e.Clicks == 1)
+            {
+                _dragStartPoint = e.Location;
+                _dragPending = true;
             }
 
-            if (_hScrollBar != null && _hScrollBar.Visible)
-            {
-                var leftBtn = new Rectangle(0, Height - 15, 15, 15);
-                var rightBtn = new Rectangle(Width - 30, Height - 15, 15, 15);
-
-                if (leftBtn.Contains(e.Location))
-                {
-                    _horizontalScrollValue = Math.Max(0, _horizontalScrollValue - 10);
-                    Invalidate();
-                    return;
-                }
-                else if (rightBtn.Contains(e.Location))
-                {
-                    _horizontalScrollValue = Math.Min(_horizontalScrollValue + 10, GetMaxHorizontalScroll());
-                    Invalidate();
-                    return;
-                }
-            }
 
             if (e.X < GetContentWidth())
             {
                 int index = ((e.Y - _topPadding) / _itemHeight) + _scrollValue;
                 if (index < 0 || index >= Items.Count) return;
 
+
                 if (EnableMultiSelect)
                 {
-                    if (ModifierKeys.HasFlag(Keys.Control | Keys.Shift) && _lastSelectedIndex != -1)
+                    if (ModifierKeys.HasFlag(Keys.Shift) && _lastSelectedIndex != -1)
                     {
+                        _selectedIndices.Clear();
                         int start = Math.Min(_lastSelectedIndex, index);
                         int end = Math.Max(_lastSelectedIndex, index);
                         for (int i = start; i <= end; i++)
@@ -768,14 +863,6 @@ namespace BazthalLib.Controls
                             _selectedIndices.Remove(index);
                         else
                             _selectedIndices.Add(index);
-                    }
-                    else if (ModifierKeys.HasFlag(Keys.Shift) && _lastSelectedIndex != -1)
-                    {
-                        _selectedIndices.Clear();
-                        int start = Math.Min(_lastSelectedIndex, index);
-                        int end = Math.Max(_lastSelectedIndex, index);
-                        for (int i = start; i <= end; i++)
-                            _selectedIndices.Add(i);
                     }
                     else
                     {
@@ -789,6 +876,7 @@ namespace BazthalLib.Controls
                     _selectedIndices.Add(index);
                 }
 
+
                 _lastSelectedIndex = index;
                 Invalidate();
                 OnSelectedIndexChanged(EventArgs.Empty);
@@ -796,9 +884,113 @@ namespace BazthalLib.Controls
         }
 
         /// <summary>
-        /// Paints the control, including list items, scrollbars and focus rectagle
+        /// Handles the <see cref="Control.MouseMove"/> event to manage drag-and-drop reordering of items.
         /// </summary>
-        /// <param name="e">Paint event arguments</param>
+        /// <remarks>This method initiates a drag-and-drop operation when the left mouse button is pressed
+        /// and moved  outside the drag threshold while drag reordering is enabled. It updates the selected indices and 
+        /// creates a visual drag ghost if configured to do so. <para> Drag-and-drop reordering is only performed if
+        /// <see cref="AllowDragReorder"/> is <see langword="true"/>. </para></remarks>
+        /// <param name="e">A <see cref="MouseEventArgs"/> that contains the event data.</param>
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+
+
+            if (!AllowDragReorder || !_dragPending || e.Button != MouseButtons.Left)
+                return;
+
+
+            Rectangle dragBox = new Rectangle(
+            _dragStartPoint.X - SystemInformation.DragSize.Width / 2,
+            _dragStartPoint.Y - SystemInformation.DragSize.Height / 2,
+            SystemInformation.DragSize.Width,
+            SystemInformation.DragSize.Height);
+
+
+            if (!dragBox.Contains(e.Location))
+            {
+                int indexPoint = IndexFromPoint(_dragStartPoint);
+                if (indexPoint >= 0 && indexPoint < Items.Count)
+                {
+                    if (!_selectedIndices.Contains(indexPoint))
+                    {
+                        _selectedIndices.Clear();
+                        _selectedIndices.Add(indexPoint);
+                        _lastSelectedIndex = indexPoint;
+                        Invalidate();
+                        OnSelectedIndexChanged(EventArgs.Empty);
+                    }
+
+
+                    _dragIndices = _selectedIndices.OrderBy(i => i).ToList();
+                    if (_dragIndices.Count > 0)
+                    {
+                        if (ShowDragGhost)
+                        {
+                            CreateDragGhost();
+
+                            if (_dragGhost != null)
+                            {
+                                int verticalGap = 6; 
+                                _ghostOffset = new Point(_dragGhost.Width / 2, _dragGhost.Height + verticalGap);
+                            }
+                        }
+
+                        _dragPending = false;
+
+                        var data = new DataObject();
+                        data.SetData(ReorderFormat, _dragIndices.ToArray());
+                        DoDragDrop(data, DragDropEffects.Move);
+
+                    }
+
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles the mouse button release event.
+        /// </summary>
+        /// <remarks>This method is called when a mouse button is released while the pointer is over the
+        /// control.  It resets the drag operation state and ensures that the base class behavior is executed.</remarks>
+        /// <param name="e">A <see cref="MouseEventArgs"/> that contains the event data.</param>
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            _dragPending = false;
+        }
+
+        /// <summary>
+        /// Handles the mouse double-click event and updates the selected item in the control.
+        /// </summary>
+        /// <remarks>This method determines the item at the location of the double-click and updates the
+        /// selection accordingly. If a valid item is double-clicked, the selection is cleared and set to the clicked
+        /// item, and the  <see cref="OnSelectedIndexChanged"/> event is raised. The control is then invalidated to
+        /// refresh its display.</remarks>
+        /// <param name="e">A <see cref="MouseEventArgs"/> that contains the event data, including the mouse pointer location.</param>
+        protected override void OnMouseDoubleClick(MouseEventArgs e)
+        {
+            base.OnMouseDoubleClick(e);
+            int index = IndexFromPoint(e.Location);
+            if (index >= 0 && index < Items.Count)
+            {
+                _selectedIndices.Clear();
+                _selectedIndices.Add(index);
+                _lastSelectedIndex = index;
+                Invalidate();
+                OnSelectedIndexChanged(EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Handles the painting of the control, including custom item rendering, scroll corner padding, drag-and-drop
+        /// visuals, and other graphical elements.
+        /// </summary>
+        /// <remarks>This method is responsible for rendering the control's visual elements, such as
+        /// items, borders, and drag-and-drop indicators. It also ensures proper handling of themes and graphical
+        /// settings like smoothing and compositing modes. Derived classes can override this method to customize the
+        /// painting behavior, but should call the base implementation to preserve default functionality.</remarks>
+        /// <param name="e">A <see cref="PaintEventArgs"/> that contains the data for the <see cref="OnPaint"/> event.</param>
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
@@ -806,7 +998,7 @@ namespace BazthalLib.Controls
             if (!SuppressDefaultItemDrawing || DrawItem != null)
                 DrawItems(e.Graphics);
 
-            // Draw the corner padding so bars don't collide in the corner
+            // Draw corner pad exactly as before (crisp geometry)
             var corner = ScrollCornerRect;
             if (!corner.IsEmpty)
             {
@@ -814,20 +1006,235 @@ namespace BazthalLib.Controls
                 e.Graphics.FillRectangle(bg, corner);
 
                 using var border = new Pen(_themeColors.BorderColor);
-                e.Graphics.DrawRectangle(border, new Rectangle(corner.X, corner.Y, corner.Width - 1, corner.Height - 1));
+                var savedPO = e.Graphics.PixelOffsetMode;
+                var savedSM = e.Graphics.SmoothingMode;
+                e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Default;
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+
+                e.Graphics.DrawRectangle(border,
+                    new Rectangle(corner.X, corner.Y, corner.Width - 1, corner.Height - 1));
+
+                e.Graphics.PixelOffsetMode = savedPO;
+                e.Graphics.SmoothingMode = savedSM;
             }
 
+            if (AllowDragReorder && ShowDragGhost && _dragGhost != null && _dragGhostOpacity > 0f)
+            {
+                var savedCM = e.Graphics.CompositingMode;
+                var savedCQ = e.Graphics.CompositingQuality;
+                var savedIM = e.Graphics.InterpolationMode;
+                var savedPO = e.Graphics.PixelOffsetMode;
+                var savedSM = e.Graphics.SmoothingMode;
+
+                e.Graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+                e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
+                e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+
+                int x = _ghostPosition.X - _ghostOffset.X;
+                int y = _ghostPosition.Y - _ghostOffset.Y;
+
+                using var attr = new System.Drawing.Imaging.ImageAttributes();
+                var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = _dragGhostOpacity };
+                attr.SetColorMatrix(cm, System.Drawing.Imaging.ColorMatrixFlag.Default,
+                                    System.Drawing.Imaging.ColorAdjustType.Bitmap);
+
+                var destRect = new Rectangle(x, y, _dragGhost.Width, _dragGhost.Height);
+                e.Graphics.DrawImage(_dragGhost, destRect, 0, 0,
+                    _dragGhost.Width, _dragGhost.Height, GraphicsUnit.Pixel, attr);
+
+                e.Graphics.CompositingMode = savedCM;
+                e.Graphics.CompositingQuality = savedCQ;
+                e.Graphics.InterpolationMode = savedIM;
+                e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Default;
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+            }
+
+            if (AllowDragReorder && _dropIndex >= 0)
+            {
+                using var pen = new Pen(UseAccentForReorderLine ? _themeColors.AccentColor : _themeColors.BorderColor, 2)
+                { Alignment = System.Drawing.Drawing2D.PenAlignment.Inset };
+
+                int lineY = (_dropIndex >= Items.Count)
+                    ? _topPadding + ((Math.Min(Items.Count - 1, _scrollValue + VisibleItems - 1) - _scrollValue + 1) * _itemHeight)
+                    : _topPadding + ((_dropIndex - _scrollValue) * _itemHeight);
+
+                if (lineY >= _topPadding && lineY <= Height - _bottomPadding)
+                    e.Graphics.DrawLine(pen, 0, lineY, Width, lineY);
+            }
+
+           
             DrawBorder(e.Graphics);
 
-            int bottomPadding = (_hScrollBar != null && _hScrollBar.Visible) ? _hScrollBar.Height + 2 : 4;
-            int rightPadding = (_vScrollBar != null && _vScrollBar.Visible) ? _vScrollBar.Width + 2  : 4;
-            if (Focused)
+            int bottomPadding = (_hScrollBar?.Visible ?? false) ? _hScrollBar.Height + 2 : 4;
+            int rightPadding = (_vScrollBar?.Visible ?? false) ? _vScrollBar.Width + 2 : 4;
+           
+            if (Focused && DrawFocusRectangle)
                 ControlPaint.DrawFocusRectangle(e.Graphics, new Rectangle(2, 2, Width - rightPadding, Height - bottomPadding));
+        }
+
+        /// <summary>
+        /// Handles the drag-and-drop operation when an object is dragged into the control's bounds.
+        /// </summary>
+        /// <remarks>This method determines the appropriate drag-and-drop effect based on the data being
+        /// dragged: <list type="bullet"> <item> <description>If <see cref="AllowDragReorder"/> is <see
+        /// langword="true"/> and the dragged data matches the reorder format, the effect is set to <see
+        /// cref="DragDropEffects.Move"/>.</description> </item> <item> <description>If the dragged data contains file
+        /// drop data, the effect is set to <see cref="DragDropEffects.Copy"/>.</description> </item> <item>
+        /// <description>Otherwise, the effect is set to <see cref="DragDropEffects.None"/>.</description> </item>
+        /// </list> The method also updates the drop index when reordering is allowed.</remarks>
+        /// <param name="e">The <see cref="DragEventArgs"/> containing data about the drag event.</param>
+        protected override void OnDragEnter(DragEventArgs e)
+        {
+            if (AllowDragReorder && e.Data.GetDataPresent(ReorderFormat))
+            {
+                e.Effect = DragDropEffects.Move;
+                UpdateDropIndex(e);
+                return;
+            }
+
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effect = DragDropEffects.Copy;
+                _dropIndex = -1;
+            }
+            else
+            {
+                e.Effect = DragDropEffects.None;
+            }
+
+            base.OnDragEnter(e);
+        }
+
+        /// <summary>
+        /// Handles the drag-over event to determine the appropriate drag-and-drop effect.
+        /// </summary>
+        /// <remarks>This method sets the drag-and-drop effect based on the type of data being dragged. If
+        /// the data  matches the reorder format and drag reordering is allowed, the effect is set to <see
+        /// cref="DragDropEffects.Move"/>.  If the data represents file drops, the effect is set to <see
+        /// cref="DragDropEffects.Copy"/>.  Otherwise, the effect is set to <see
+        /// cref="DragDropEffects.None"/>.</remarks>
+        /// <param name="e">The <see cref="DragEventArgs"/> containing data about the drag event.</param>
+        protected override void OnDragOver(DragEventArgs e)
+        {
+            if (AllowDragReorder && e.Data.GetDataPresent(ReorderFormat))
+            {
+                e.Effect = DragDropEffects.Move;
+                UpdateDropIndex(e);
+                return;
+            }
+
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effect = DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effect = DragDropEffects.None;
+            }
+
+            base.OnDragOver(e);
+        }
+
+        /// <summary>
+        /// Handles the drag-and-drop operation when an object is dropped onto the control.
+        /// </summary>
+        /// <remarks>This method supports two types of drag-and-drop operations: <list type="bullet">
+        /// <item> <description>If <see cref="AllowDragReorder"/> is <see langword="true"/> and the dragged data matches
+        /// the reorder format, the control performs a reorder operation.</description> </item> <item> <description>If
+        /// the dragged data contains file paths (<see cref="DataFormats.FileDrop"/>), the <see cref="FilesDropped"/>
+        /// event is raised with the dropped files.</description> </item> </list> If neither condition is met, the base
+        /// class implementation is invoked.</remarks>
+        /// <param name="e">The <see cref="DragEventArgs"/> containing data about the drag-and-drop operation.</param>
+        protected override void OnDragDrop(DragEventArgs e)
+        {
+            if (AllowDragReorder && e.Data.GetDataPresent(ReorderFormat))
+            {
+                PerformReorder(e);
+                return;
+            }
+
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                FilesDropped?.Invoke(this, new FilesDroppedEventArgs(files));
+            }
+
+            base.OnDragDrop(e);
+        }
+
+        /// <summary>
+        /// Handles the event when a drag operation leaves the control's bounds.
+        /// </summary>
+        /// <remarks>If drag reordering is enabled, this method resets the drop index and invalidates the
+        /// control  to update its visual state. Always calls the base implementation to ensure standard
+        /// behavior.</remarks>
+        /// <param name="e">An <see cref="EventArgs"/> that contains the event data.</param>
+        protected override void OnDragLeave(EventArgs e)
+        {
+            if (AllowDragReorder)
+            {
+                _dropIndex = -1;
+                Invalidate();
+            }
+
+            base.OnDragLeave(e);
         }
 
         #endregion Overrides
 
         #region Drawing
+
+        /// <summary>
+        /// Creates a visual representation of the items being dragged, known as a drag ghost.
+        /// </summary>
+        /// <remarks>The drag ghost is a bitmap that visually represents the selected items being dragged.
+        /// Its size and appearance are determined by the current drag ghost size mode and the selected items. This
+        /// method disposes of any previously created drag ghost before creating a new one.</remarks>
+        private void CreateDragGhost()
+        {
+            if (_dragIndices == null || _dragIndices.Count == 0)
+                return;
+            int ghostWidth = Width;
+            if (_dragGhostSizeMode == DragGhostSizeMode.FitContent)
+            {
+                int maxWidth = 0;
+                foreach (var index in _dragIndices)
+                {
+                    string text = Items[index]?.ToString() ?? string.Empty;
+                    int w = TextRenderer.MeasureText(text, Font).Width + 8;
+                    maxWidth = Math.Max(maxWidth, w);
+                }
+
+                ghostWidth = maxWidth;
+            }
+            else if (_dragGhostSizeMode == DragGhostSizeMode.FixedWidth)
+            {
+                ghostWidth = _dragGhostFixedWidth;
+            }
+
+            int ghostHeight = _dragIndices.Count * _itemHeight;
+            _dragGhost?.Dispose();
+            _dragGhost = new Bitmap(ghostWidth, ghostHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (Graphics g = Graphics.FromImage(_dragGhost))
+            {
+                g.Clear(Color.Transparent);
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                for (int i = 0; i < _dragIndices.Count; i++)
+                {
+                    int index = _dragIndices[i];
+                    var rect = new Rectangle(0, i * _itemHeight, ghostWidth, _itemHeight);
+                    using var bg = new SolidBrush(_themeColors.SelectedItemBackColor);
+                    using var fg = new SolidBrush(_themeColors.SelectedItemForeColor);
+                    g.FillRectangle(bg, rect);
+                    g.DrawString(Items[index]?.ToString() ?? string.Empty, Font, fg, rect, new StringFormat { LineAlignment = StringAlignment.Center, Alignment = StringAlignment.Near, FormatFlags = StringFormatFlags.NoWrap });
+                }
+            }
+        }
 
         /// <summary>
         /// Renders the visible items in the control onto the specified <see cref="Graphics"/> surface.
@@ -901,6 +1308,124 @@ namespace BazthalLib.Controls
         #endregion Drawing
 
         #region Helpers
+
+        /// <summary>
+        /// Updates the drop index based on the current drag event.
+        /// </summary>
+        /// <remarks>This method calculates the appropriate index for an item drop operation based on the
+        /// mouse position during a drag-and-drop operation. It updates the internal drop index and ghost position, and
+        /// triggers a redraw of the control.</remarks>
+        /// <param name="e">The <see cref="DragEventArgs"/> containing the data for the drag event, including the current mouse
+        /// position.</param>
+        private void UpdateDropIndex(DragEventArgs e)
+        {
+            Point clientPoint = PointToClient(new Point(e.X, e.Y));
+            _ghostPosition = clientPoint;
+            int index = IndexFromPoint(clientPoint);
+            _dropIndex = index < 0
+                ? Items.Count
+                : (clientPoint.Y > _topPadding + ((index - _scrollValue) * _itemHeight) + (_itemHeight / 2)
+                    ? index + 1
+                    : index);
+
+            Invalidate();
+            Update();
+        }
+
+        /// <summary>
+        /// Reorders items in the collection based on the drag-and-drop operation.
+        /// </summary>
+        /// <remarks>This method adjusts the order of items in the collection by removing the dragged
+        /// items from their original positions  and inserting them at the drop index. It updates the selected indices
+        /// to reflect the new positions of the dragged items,  ensures the last selected item is visible, and raises
+        /// the <see cref="ItemsReordered"/> event to notify listeners of the change.</remarks>
+        /// <param name="e">The <see cref="DragEventArgs"/> containing data about the drag-and-drop operation.</param>
+        private void PerformReorder(DragEventArgs e)
+        {
+            if (_dragIndices.Count == 0 || _dropIndex < 0) return;
+
+            var oldIndices = _dragIndices.ToList();
+            var draggedItems = _dragIndices.Select(i => Items[i]).ToList();
+
+            foreach (var i in _dragIndices.OrderByDescending(i => i))
+                Items.RemoveAt(i);
+
+            int adjustedDrop = _dropIndex;
+            foreach (var i in oldIndices)
+                if (i < _dropIndex) adjustedDrop--;
+
+            for (int j = 0; j < draggedItems.Count; j++)
+                Items.Insert(adjustedDrop + j, draggedItems[j]);
+
+            _selectedIndices.Clear();
+            for (int j = 0; j < draggedItems.Count; j++)
+                _selectedIndices.Add(adjustedDrop + j);
+
+            _lastSelectedIndex = adjustedDrop;
+            EnsureVisible(_lastSelectedIndex);
+            Invalidate();
+            OnSelectedIndexChanged(EventArgs.Empty);
+
+            var newIndices = _selectedIndices.ToList();
+            ItemsReordered?.Invoke(this, new ItemsReorderedEventArgs(oldIndices, newIndices));
+
+            _dragGhost?.Dispose();
+            _dragGhost = null;
+            _dragIndices.Clear();
+            _dropIndex = -1;
+        }
+
+
+        /// <summary>
+        /// Moves the currently selected items in the list by the specified direction.
+        /// </summary>
+        /// <remarks>This method reorders the items in the list based on the current selection and the
+        /// specified direction.  If the selected items are already at the boundary of the list (e.g., the first item
+        /// for an upward move or the last item for a downward move),  the method does nothing. After the move, the
+        /// selection is updated to reflect the new positions of the moved items.</remarks>
+        /// <param name="direction">The direction to move the selected items. A negative value moves the items up, and a positive value moves
+        /// them down.</param>
+        private void MoveSelectedItems(int direction)
+        {
+            try
+            {
+                if (_selectedIndices.Count == 0 || Items.Count < 2) return;
+
+                var oldIndices = _selectedIndices.ToList();
+
+                var indices = direction < 0 ? _selectedIndices.OrderBy(i => i).ToList() : _selectedIndices.OrderByDescending(i => i).ToList();
+
+                if ((direction < 0 && indices.First() == 0) || (direction > 0 && indices.First() == Items.Count - 1)) return;
+
+
+                foreach (var index in indices)
+                {
+                    int newIndex = index + direction;
+                    var temp = Items[index];
+                    Items[index] = Items[newIndex];
+                    Items[newIndex] = temp;
+                }
+
+                _selectedIndices.Clear();
+                foreach (var index in indices)
+                    _selectedIndices.Add(index + direction);
+
+                _lastSelectedIndex = direction < 0 ? _selectedIndices.Min() : _selectedIndices.Max();
+
+                EnsureVisible(_lastSelectedIndex);
+                Invalidate();
+                OnSelectedIndexChanged(EventArgs.Empty);
+
+                var newIndices = _selectedIndices.ToList();
+                ItemsReordered?.Invoke(this, new ItemsReorderedEventArgs(oldIndices, newIndices));
+            }
+            catch (Exception ex)
+            {
+                DebugUtils.Log("Move Selected Items", "ThemableListBox", ex.Message);
+            }
+
+
+        }
 
         /// <summary>
         /// Determines the index of the item at the specified point within the control.
@@ -998,6 +1523,7 @@ namespace BazthalLib.Controls
         /// </summary>
         /// <returns>The height of the content area in pixels. If a horizontal scrollbar is visible, its height is subtracted
         /// from the total height.</returns>
+       
         private int GetContentHeight()
         {
             return Height - (_hScrollBar != null && _hScrollBar.Visible ? _hScrollBar.Height : 0);
@@ -1201,7 +1727,7 @@ namespace BazthalLib.Controls
             }
             else
             {
-                Invalidate(); 
+                Invalidate();
             }
             _lastKeyPressTime = DateTime.Now;
             SearchBufferChanged?.Invoke(this, _searchBuffer);
@@ -1250,17 +1776,17 @@ namespace BazthalLib.Controls
             Invalidate();
 
         }
-        
+
         #endregion Helpers
-        
-        
+
+
         #region Wrappers
 
-/// <summary>
-/// Retrieves the text representation of the specified item.
-/// </summary>
-/// <param name="item">The item for which to retrieve the text representation. This can be any object.</param>
-/// <returns>The text representation of the specified item, as determined by the underlying list box.</returns>
+        /// <summary>
+        /// Retrieves the text representation of the specified item.
+        /// </summary>
+        /// <param name="item">The item for which to retrieve the text representation. This can be any object.</param>
+        /// <returns>The text representation of the specified item, as determined by the underlying list box.</returns>
         public string GetItemText(object item)
         {
             return _hiddenListBox.GetItemText(item);

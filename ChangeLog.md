@@ -1,4 +1,10 @@
-﻿## 1.1.4
+﻿## 1.1.5
+- Added item reordering to `ThemableListBox`, supporting both single and multi-selection. Reordering can be performed using mouse drag or by pressing Ctrl + Arrow Up/Down keys.
+- Clicking on the track of `ThemableScrollBar` now moves the thumb toward the cursor by `LargeChange`.
+  - Holding down the mouse button will repeat this action until the thumb reaches the cursor.
+- Introduced `FilesDroppedEventArgs` and `ItemsReorderedEventArgs` classes for handling file drop and item reorder events.
+
+## 1.1.4
 - Multi-selection support in list controls:
   - Added `HashSet<int>` to track selected indices.
   - Introduced `EnableMultiSelect` property in `ThemableListBox`.

@@ -10,7 +10,7 @@ namespace BazthalLib.Controls
     public class ThemableScrollBar : ThemableControlBase
     {
         #region Fields and Properties
-        private readonly string _version = "V1.3";
+        private readonly string _version = "V1.4";
         private bool _hoverArrows = true;
         private bool _hovering = false;
         private ThemeColors _themeColors = new();
@@ -29,6 +29,12 @@ namespace BazthalLib.Controls
 
         private bool _dragging = false;
         private int _dragOffset = 0;
+
+        private bool _allowTrackClick = true;
+        private bool _trackClickRepeat = true;
+        private Timer? _trackClickTimer;
+        private int _trackClickDirection = 0;
+        private Point _trackClickPoint;
 
         private readonly ThemableScrollBarRenderer _renderer = new();
 
@@ -53,6 +59,34 @@ namespace BazthalLib.Controls
         [Browsable(true)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public new string ControlID => $"ThemableScrollBar {_version}";
+
+        /// <summary>
+        /// Gets or sets a value indicating whether clicking on the scrollbar track moves the thumb by the <see
+        /// cref="LargeChange"/> value.
+        /// </summary>
+        [Browsable(true)]
+        [Category("BazthalLib - Behavior")]
+        [Description("Allow clicking on the scrollbar track to move the thumb by LargeChange.")]
+        [DefaultValue(true)]
+        public bool AllowTrackClick
+        {
+            get => _allowTrackClick;
+            set => _allowTrackClick = value;
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether holding the mouse on the track  will repeatedly scroll by the <see
+        /// cref="LargeChange"/> value.
+        /// </summary>
+        [Browsable(true)]
+        [Category("BazthalLib - Behavior")]
+        [Description("If true, holding mouse on the track will repeatedly scroll by LargeChange.")]
+        [DefaultValue(true)]
+        public bool TrackClickRepeat
+        {
+            get => _trackClickRepeat;
+            set => _trackClickRepeat = value;
+        }
 
         /// <summary>
         /// Gets or sets a value indicating whether arrows are hidden until hovered over.
@@ -137,6 +171,7 @@ namespace BazthalLib.Controls
             get => _largeChange;
             set { _largeChange = value; Invalidate(); }
         }
+        
         /// <summary>
         /// Gets or sets the small change value for the scrollbar.
         /// </summary>
@@ -195,6 +230,7 @@ namespace BazthalLib.Controls
 
         public event EventHandler? Scroll;
         public event EventHandler? ValueChanged;
+ 
         #endregion Fields and Properties
 
         #region Constructor
@@ -217,6 +253,7 @@ namespace BazthalLib.Controls
         #endregion Constructor
 
         #region Methods and Events
+   
         /// <summary>
         /// Handles the painting of the custom scrollbar control.
         /// </summary>
@@ -298,14 +335,19 @@ namespace BazthalLib.Controls
         }
 
         /// <summary>
-        /// Handles the mouse down event for the control, adjusting the value based on the location of the click.
+        /// Handles the <see cref="Control.MouseDown"/> event to process user interactions with the control.
         /// </summary>
-        /// <remarks>If the mouse click occurs within the up or down button areas, the value is adjusted
-        /// by the large change amount. If the click is within the thumb area, dragging is initiated.</remarks>
-        /// <param name="e">A <see cref="MouseEventArgs"/> that contains the event data.</param>
+        /// <remarks>This method determines the action to take based on the location of the mouse click:
+        /// <list type="bullet"> <item> <description>If the click occurs on the "up" or "down" button areas, the value
+        /// is adjusted by the <see cref="LargeChange"/> amount.</description> </item> <item> <description>If the click
+        /// occurs on the thumb area, dragging is initiated to allow the user to adjust the value
+        /// interactively.</description> </item> <item> <description>If the click occurs on the track area (outside the
+        /// thumb), the value is adjusted by a page scroll amount, and repeated scrolling is initiated if
+        /// allowed.</description> </item> </list> Override this method to customize the behavior of mouse interactions
+        /// with the control.</remarks>
+        /// <param name="e">A <see cref="MouseEventArgs"/> that contains the event data, including the mouse button and location.</param>
         protected override void OnMouseDown(MouseEventArgs e)
         {
-
             if (UpButtonRect.Contains(e.Location))
             {
                 Value -= LargeChange;
@@ -314,12 +356,51 @@ namespace BazthalLib.Controls
             {
                 Value += LargeChange;
             }
-            else if (_renderer.GetThumbRectangle(Orientation, TrackArea, Minimum, Maximum, Value, LargeChange).Contains(e.Location))
+            else
             {
-                _dragging = true;
-                _dragOffset = Orientation == Orientation.Vertical
-                    ? e.Y - _renderer.GetThumbRectangle(Orientation, TrackArea, Minimum, Maximum, Value, LargeChange).Top
-                    : e.X - _renderer.GetThumbRectangle(Orientation, TrackArea, Minimum, Maximum, Value, LargeChange).Left;
+                Rectangle thumbRect = _renderer.GetThumbRectangle(
+                    Orientation, TrackArea, Minimum, Maximum, Value, LargeChange);
+
+                if (thumbRect.Contains(e.Location))
+                {
+                    _dragging = true;
+                    _dragOffset = Orientation == Orientation.Vertical
+                        ? e.Y - thumbRect.Top
+                        : e.X - thumbRect.Left;
+                }
+                else if (_allowTrackClick && TrackArea.Contains(e.Location))
+                {
+                    if (Orientation == Orientation.Vertical)
+                    {
+                        if (e.Y < thumbRect.Top)
+                        {
+                            _trackClickPoint = e.Location;
+                            PageScroll(-1);
+                            StartTrackClickTimer(-1);
+                        }
+                        else if (e.Y > thumbRect.Bottom)
+                        {
+                            _trackClickPoint = e.Location;
+                            PageScroll(+1);
+                            StartTrackClickTimer(+1);
+                        }
+                    }
+                    else
+                    {
+                        if (e.X < thumbRect.Left)
+                        {
+                            _trackClickPoint = e.Location;
+                            PageScroll(-1);
+                            StartTrackClickTimer(-1);
+                        }
+                        else if (e.X > thumbRect.Right)
+                        {
+                            _trackClickPoint = e.Location;
+                            PageScroll(+1);
+                            StartTrackClickTimer(+1);
+                        }
+                    }
+                }
             }
         }
 
@@ -357,7 +438,6 @@ namespace BazthalLib.Controls
             }
         }
 
-
         /// <summary>
         /// Handles the event when the mouse pointer enters the control's client area.
         /// </summary>
@@ -385,14 +465,20 @@ namespace BazthalLib.Controls
         }
 
         /// <summary>
-        /// Handles the mouse button release event.
+        /// Handles the <see cref="Control.MouseUp"/> event to stop dragging and reset the track click timer.
         /// </summary>
-        /// <remarks>This method is called when a mouse button is released while the pointer is over the
-        /// control. It sets the dragging state to false, indicating that a drag operation has ended.</remarks>
-        /// <param name="e">An object that contains the event data.</param>
+        /// <remarks>This method is called when the mouse button is released. It stops the dragging
+        /// operation  and resets the interval of the track click timer, if it is active.</remarks>
+        /// <param name="e">A <see cref="MouseEventArgs"/> that contains the event data.</param>
         protected override void OnMouseUp(MouseEventArgs e)
         {
             _dragging = false;
+
+            if (_trackClickTimer != null)
+            {
+                _trackClickTimer.Stop();
+                _trackClickTimer.Interval = 250;
+            }
         }
 
         /// <summary>
@@ -406,6 +492,95 @@ namespace BazthalLib.Controls
         {
             Value -= Math.Sign(e.Delta) * SmallChange;
         }
+
+        #region Helper Methods
+
+        /// <summary>
+        /// Adjusts the current value by a large increment in the specified direction.
+        /// </summary>
+        /// <remarks>The method ensures that the resulting value remains within the valid range defined by
+        /// the <c>Minimum</c> and <c>Maximum</c> properties.</remarks>
+        /// <param name="direction">The direction of the scroll. A negative value decreases the current value, while a positive value increases
+        /// it.</param>
+        private void PageScroll(int direction)
+        {
+            if (direction < 0)
+                Value = Math.Max(Minimum, Value - LargeChange);
+            else
+                Value = Math.Min(Maximum - LargeChange, Value + LargeChange);
+        }
+
+        /// <summary>
+        /// Starts a timer to track repeated click events in the specified direction.
+        /// </summary>
+        /// <remarks>This method initializes and starts a timer that triggers repeated actions based on
+        /// the specified direction. The timer interval is set to 250 milliseconds. If the timer is already running, it
+        /// will not be reinitialized.</remarks>
+        /// <param name="direction">The direction of the click event to track. The value determines the context in which the repeated clicks are
+        /// processed.</param>
+        private void StartTrackClickTimer(int direction)
+        {
+            if (!_trackClickRepeat) return;
+
+            _trackClickDirection = direction;
+
+            _trackClickTimer ??= new Timer();
+            _trackClickTimer.Interval = 250;
+            _trackClickTimer.Tick += TrackClickTimer_Tick;
+            _trackClickTimer.Start();
+        }
+
+        /// <summary>
+        /// Handles the timer tick event for tracking click-and-hold behavior on the track area.
+        /// </summary>
+        /// <remarks>This method adjusts the timer interval after the first tick to speed up subsequent
+        /// ticks, calculates the thumb's position, and determines whether to stop the timer based on the thumb's
+        /// position relative to the click point. If the thumb has not reached the click point, it triggers a page
+        /// scroll in the direction of the click.</remarks>
+        /// <param name="sender">The source of the event, typically the timer instance.</param>
+        /// <param name="e">An <see cref="EventArgs"/> instance containing the event data.</param>
+        private void TrackClickTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_trackClickTimer == null) return;
+
+            // After first tick, speed up
+            if (_trackClickTimer.Interval != 50)
+                _trackClickTimer.Interval = 50;
+
+            Rectangle thumbRect = _renderer.GetThumbRectangle(
+                Orientation, TrackArea, Minimum, Maximum, Value, LargeChange);
+
+            bool stop = false;
+
+            if (Orientation == Orientation.Vertical)
+            {
+                if (_trackClickDirection < 0 && thumbRect.Top <= _trackClickPoint.Y)
+                    stop = true; 
+                else if (_trackClickDirection > 0 && thumbRect.Bottom >= _trackClickPoint.Y)
+                    stop = true; 
+            }
+            else
+            {
+                if (_trackClickDirection < 0 && thumbRect.Left <= _trackClickPoint.X)
+                    stop = true; 
+                else if (_trackClickDirection > 0 && thumbRect.Right >= _trackClickPoint.X)
+                    stop = true; 
+            }
+
+            if (stop)
+            {
+                _trackClickTimer.Stop();
+                _trackClickTimer.Interval = 250; 
+                return;
+            }
+
+            PageScroll(_trackClickDirection);
+        }
+
+
+
+        #endregion Helper Methods
+
 
         #endregion Methods and Events
 
