@@ -7,13 +7,14 @@ using System.Windows.Forms;
 using BazthalLib.Configuration;
 using BazthalLib.Systems.IO;
 using BazthalLib.UI;
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib.Controls
 {
     public class ThemeColorsSetter : UserControl
     {
         #region Fields and Properties
-        private string _version = "V1.2";
+        private string _version = "V1.3";
         private bool _useThemeColors = true;
         private ThemeColors _themeColors = new();
         private bool _enableBorder = false;
@@ -314,7 +315,6 @@ namespace BazthalLib.Controls
 
         #endregion Constructor
 
-
         #region Initialization Helper Methods
         /// <summary>
         /// Initializes the control with default properties.
@@ -402,7 +402,7 @@ namespace BazthalLib.Controls
                 {
                     if (btn.Tag != null && btn.Tag.ToString() == "PickColor") //Only change the information on the color picker buttons
                     {
-                        btn.TintedImage = TintedImageRenderer.LoadEmbededImage("BazthalLib.Resources.Drop.png");
+                        btn.TintedImage = TintedImageRenderer.LoadEmbeddedImage("BazthalLib.Resources.Drop.png");
                         btn.EnableBorder = false;
                         btn.UseAccentForTintedImage = true;
                         btn.FocusWrapAroundImage = true;
@@ -460,11 +460,11 @@ namespace BazthalLib.Controls
             //Make sure the file path is not empty
             if (string.IsNullOrWhiteSpace(_configFilePath))
             {
-                DebugUtils.Log("ThemeColorsSetter", "Save", "No config file path set.");
+                DebugUtils.Log("ThemeColorsSetter", "Save", "No config file path set.", logLevel: LogLevel.Info);
                 return;
             }
 
-            var config = new JSON<ThemeColors>(ConfigFilePath, new JsonConverter[] { new ThemeColorsJsonConverter() });
+            var config = new JSON<ThemeColors>(ConfigFilePath, new JsonConverter[] { new Extensibility.Serialization.ThemeColorsJsonConverter() });
             {
                 config.Data.AccentColor = AccentThemeColor;
                 config.Data.BackColor = BackThemeColor;
@@ -476,7 +476,7 @@ namespace BazthalLib.Controls
             }
             Files.CreateBackup(_configFilePath, 1); 
             config.Save();
-            DebugUtils.Log("Save Theme", Name, _configFilePath);
+            DebugUtils.Log("Save Theme", Name, _configFilePath, logLevel: LogLevel.Info);
         }
 
         /// <summary>
@@ -491,12 +491,12 @@ namespace BazthalLib.Controls
             //Make sure the file path is not empty
             if (string.IsNullOrWhiteSpace(_configFilePath))
             {
-                DebugUtils.Log("ThemeColorsSetter", "Load", "No config file path set.");
+                DebugUtils.Log("ThemeColorsSetter", "Load", "No config file path set.", logLevel: LogLevel.Info);
                 return;
             }
             if (File.Exists(ConfigFilePath))
             {
-                var config = new JSON<ThemeColors>(_configFilePath, new JsonConverter[] { new ThemeColorsJsonConverter() });
+                var config = new JSON<ThemeColors>(_configFilePath, new JsonConverter[] { new Extensibility.Serialization.ThemeColorsJsonConverter() });
                 config.Load();
 
                 var theme = config.Data;
@@ -512,7 +512,7 @@ namespace BazthalLib.Controls
             else
             {
                 //If it doesn't exist save current set colors to file (Likely defaults)
-                DebugUtils.Log("ThemeColorsSetter", "Load Theme", "File Not Found - Saving New file");
+                DebugUtils.Log("ThemeColorsSetter", "Load Theme", "File Not Found - Saving New file", logLevel: LogLevel.Info);
                 SaveThemetoJson();
             }
 
@@ -526,7 +526,7 @@ namespace BazthalLib.Controls
 
             SetColors();
 
-            DebugUtils.Log("Load Theme", Name, _configFilePath);
+            DebugUtils.Log("Load Theme", Name, _configFilePath, logLevel: LogLevel.Info);
 
             //Resave at load to make sure correct just incase it was restored to default with the color converter 
             SaveThemetoJson();
@@ -616,11 +616,11 @@ namespace BazthalLib.Controls
             Color? selected = ThemableColorPickerDialog.Show();
             if (selected.HasValue || selected != null)
             {
-                DebugUtils.Log("PickColor", "ThemeColorsSetter", $"Selected color for {color}: {selected.Value}");
+                DebugUtils.Log("PickColor", "ThemeColorsSetter", $"Selected color for {color}: {selected.Value}", logLevel: LogLevel.Info);
 
                 var selectedColor = Theming.GetColorNameFromString(selected.Value.ToString());
 
-                DebugUtils.Log("PickColor", "ThemeColorsSetter", $"Selected color name for {color}: {selectedColor}");
+                DebugUtils.Log("PickColor", "ThemeColorsSetter", $"Selected color name for {color}: {selectedColor}", logLevel: LogLevel.Info);
 
                 switch (color)
                 {
@@ -681,7 +681,7 @@ namespace BazthalLib.Controls
         /// "BorderColor", "SelectedForeColor", "SelectedBackColor", and "DisabledColor".</param>
         private void ResetColor(string color)
         {
-            DebugUtils.Log("ResetColor", "ThemeColorsSetter", $"Resetting {color} to default.");
+            DebugUtils.Log("ResetColor", "ThemeColorsSetter", $"Resetting {color} to default.", logLevel: LogLevel.Info);
 
             switch (color)
             {

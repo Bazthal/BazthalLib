@@ -1,7 +1,8 @@
-using System.Drawing;
-using System.Windows.Forms;
 using BazthalLib.Controls;
 using BazthalLib.UI;
+using System;
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace BazthalLib
 {
@@ -12,29 +13,35 @@ namespace BazthalLib
 
         private readonly int _autoCloseMilliseconds;
 
+        private readonly Point? _forcedLocation;
+
         #endregion Fields and Properties
 
         #region Constructor
+                
         /// <summary>
         /// Initializes a new instance of the <see cref="ThemableMessageBox"/> class with the specified message, title,
-        /// buttons, icon, and optional auto-close duration.
+        /// buttons, icon, and optional settings.
         /// </summary>
-        /// <remarks>The message box is centered relative to its parent and has a fixed tool window border
-        /// style. It does not show an icon in the taskbar and cannot be maximized or minimized. If <paramref
-        /// name="autoCloseMilliseconds"/> is greater than 0, the message box will automatically close after the
-        /// specified duration.</remarks>
+        /// <remarks>This constructor creates a themable message box with customizable appearance and
+        /// behavior. If <paramref name="autoCloseMilliseconds"/> is greater than 0, the message box will close
+        /// automatically after the specified duration. If <paramref name="forcedLocation"/> is provided, the message
+        /// box will be displayed at the specified location instead of the default centered position.</remarks>
         /// <param name="message">The message to display in the message box.</param>
         /// <param name="title">The title of the message box window.</param>
-        /// <param name="buttons">The buttons to display in the message box.</param>
+        /// <param name="buttons">The buttons to display in the message box, such as OK or Cancel.</param>
         /// <param name="icon">The icon to display in the message box. Defaults to <see cref="MessageBoxIcon.None"/>.</param>
-        /// <param name="autoCloseMilliseconds">The time in milliseconds after which the message box will automatically close. If set to 0, the message box
-        /// will not auto-close.</param>
+        /// <param name="autoCloseMilliseconds">The time, in milliseconds, after which the message box will automatically close. A value of 0 indicates that
+        /// the message box will not close automatically.</param>
+        /// <param name="forcedLocation">An optional <see cref="Point"/> specifying the exact screen location where the message box should appear. If
+        /// null, the message box will be centered relative to its parent.</param>
         public ThemableMessageBox(
             string message,
             string title,
             MessageBoxButtons buttons,
             MessageBoxIcon icon = MessageBoxIcon.None,
-            int autoCloseMilliseconds = 0)
+            int autoCloseMilliseconds = 0,
+            Point? forcedLocation = null)
         {
             _autoCloseMilliseconds = autoCloseMilliseconds;
 
@@ -52,8 +59,11 @@ namespace BazthalLib
 
             Theming.RegisterForm(this);
 
+            PlaySystemSound(icon);
+
             if (_autoCloseMilliseconds > 0)
                 StartAutoCloseTimer();
+            _forcedLocation = forcedLocation;
         }
         #endregion Constructor
 
@@ -78,6 +88,78 @@ namespace BazthalLib
             };
             timer.Start();
         }
+
+        /// <summary>
+        /// Overrides the <see cref="Form.OnShown"/> method to adjust the form's position  based on a specified
+        /// location, if provided.
+        /// </summary>
+        /// <remarks>If a forced location is specified, the form's start position is set to  <see
+        /// cref="FormStartPosition.Manual"/>, and the form is centered around the  specified point. The position is
+        /// adjusted to ensure the form remains within  the bounds of the working area of the screen containing the
+        /// specified point.</remarks>
+        /// <param name="e">An <see cref="EventArgs"/> that contains the event data.</param>
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+
+            if (_forcedLocation.HasValue)
+            {
+                StartPosition = FormStartPosition.Manual;
+
+                var pos = _forcedLocation.Value;
+
+                int x = pos.X - (Width / 2);
+                int y = pos.Y - (Height / 2);
+
+                var screen = Screen.FromPoint(pos).WorkingArea;
+
+                x = Math.Max(screen.Left, Math.Min(x, screen.Right - Width));
+                y = Math.Max(screen.Top, Math.Min(y, screen.Bottom - Height));
+
+                Location = new Point(x, y);
+            }
+        }
+
+        /// <summary>
+        /// Plays the system sound corresponding to the specified <see cref="MessageBoxIcon"/> value.
+        /// </summary>
+        /// <remarks>If the specified <paramref name="icon"/> does not match one of the supported values,
+        /// no sound is played.</remarks>
+        /// <param name="icon">The <see cref="MessageBoxIcon"/> that determines which system sound to play. Supported values are <see
+        /// cref="MessageBoxIcon.Error"/>, <see cref="MessageBoxIcon.Warning"/>, <see
+        /// cref="MessageBoxIcon.Information"/>, and <see cref="MessageBoxIcon.Question"/>.</param>
+        private void PlaySystemSound(MessageBoxIcon icon)
+        {
+            switch (icon)
+            {
+                case MessageBoxIcon.Error:
+                    //case MessageBoxIcon.Hand:
+                    //case MessageBoxIcon.Stop:
+                    System.Media.SystemSounds.Hand.Play();
+                    break;
+
+                case MessageBoxIcon.Warning:
+                    //case MessageBoxIcon.Exclamation:
+                    System.Media.SystemSounds.Exclamation.Play();
+                    break;
+
+                case MessageBoxIcon.Information:
+                    //case MessageBoxIcon.Asterisk:
+                    System.Media.SystemSounds.Asterisk.Play();
+                    break;
+
+                case MessageBoxIcon.Question:
+                    System.Media.SystemSounds.Question.Play();
+                    break;
+
+                default:
+                    // No sound
+                    break;
+            }
+        }
+
+
+
         #endregion Methods and Events
 
         #region Layout and Controls
@@ -96,13 +178,16 @@ namespace BazthalLib
         {
             var hasIcon = icon != MessageBoxIcon.None;
 
-            var iconBox = new PictureBox
+            var iconBox = new ThemablePictureBox
             {
                 Size = new Size(48, 48),
                 Margin = new Padding(20),
                 Image = GetIconImage(icon),
-                SizeMode = PictureBoxSizeMode.StretchImage,
-                Visible = hasIcon // Hide the icon if none
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Visible = hasIcon, // Hide the icon if none
+                UseAccentColor = true,
+                UseTintedImage = true,
+                EnableBorder = false
             };
 
             var label = new Label
@@ -347,12 +432,35 @@ namespace BazthalLib
 
         #region DialogResult Methods
 
-/// <summary>
-/// Displays a message box with the specified message and an OK button.
-/// </summary>
-/// <param name="message">The message to display in the message box.</param>
-/// <returns>A <see cref="DialogResult"/> value indicating the result of the message box interaction. Always returns <see
-/// cref="DialogResult.OK"/> since only an OK button is provided.</returns>
+        /// <summary>
+        /// Displays a message box at the specified screen location with the given message, title, buttons, and icon.
+        /// </summary>
+        /// <remarks>This method creates and displays a modal message box at the specified location on the
+        /// screen. The message box will block interaction with other windows in the application until it is
+        /// closed.</remarks>
+        /// <param name="location">The screen coordinates where the message box will be displayed.</param>
+        /// <param name="message">The text to display in the message box.</param>
+        /// <param name="title">The title text to display in the message box's title bar.</param>
+        /// <param name="buttons">The buttons to display in the message box. The default is <see cref="MessageBoxButtons.OK"/>.</param>
+        /// <param name="icon">The icon to display in the message box. The default is <see cref="MessageBoxIcon.None"/>.</param>
+        /// <returns>A <see cref="DialogResult"/> value that indicates which button was clicked by the user.</returns>
+        public static DialogResult ShowAt(
+            Point location,
+            string message,
+            string title,
+            MessageBoxButtons buttons = MessageBoxButtons.OK,
+            MessageBoxIcon icon = MessageBoxIcon.None)
+        {
+            using var box = new ThemableMessageBox(message, title, buttons, icon, 0, location);
+            return box.ShowDialog();
+        }
+
+        /// <summary>
+        /// Displays a message box with the specified message and an OK button.
+        /// </summary>
+        /// <param name="message">The message to display in the message box.</param>
+        /// <returns>A <see cref="DialogResult"/> value indicating the result of the message box interaction. Always returns <see
+        /// cref="DialogResult.OK"/> since only an OK button is provided.</returns>
         public static DialogResult Show(
             string message
             )
@@ -361,12 +469,12 @@ namespace BazthalLib
             return box.ShowDialog();
         }
 
-/// <summary>
-/// Displays a message box with the specified message and title.
-/// </summary>
-/// <param name="message">The message to be displayed in the message box.</param>
-/// <param name="title">The title of the message box window.</param>
-/// <returns>A <see cref="DialogResult"/> value indicating the result of the message box interaction.</returns>
+        /// <summary>
+        /// Displays a message box with the specified message and title.
+        /// </summary>
+        /// <param name="message">The message to be displayed in the message box.</param>
+        /// <param name="title">The title of the message box window.</param>
+        /// <returns>A <see cref="DialogResult"/> value indicating the result of the message box interaction.</returns>
         public static DialogResult Show(
             string message,
             string title
@@ -376,13 +484,13 @@ namespace BazthalLib
             return box.ShowDialog();
         }
 
-/// <summary>
-/// Displays a message box with the specified text, title, and buttons.
-/// </summary>
-/// <param name="message">The text to display in the message box.</param>
-/// <param name="title">The title of the message box.</param>
-/// <param name="buttons">A value that specifies which buttons to display in the message box.</param>
-/// <returns>A <see cref="DialogResult"/> value that indicates which button was clicked by the user.</returns>
+        /// <summary>
+        /// Displays a message box with the specified text, title, and buttons.
+        /// </summary>
+        /// <param name="message">The text to display in the message box.</param>
+        /// <param name="title">The title of the message box.</param>
+        /// <param name="buttons">A value that specifies which buttons to display in the message box.</param>
+        /// <returns>A <see cref="DialogResult"/> value that indicates which button was clicked by the user.</returns>
         public static DialogResult Show(
             string message,
             string title,
@@ -393,14 +501,14 @@ namespace BazthalLib
             return box.ShowDialog();
         }
 
-/// <summary>
-/// Displays a message box with the specified text, title, buttons, and icon.
-/// </summary>
-/// <param name="message">The text to display in the message box.</param>
-/// <param name="title">The title of the message box.</param>
-/// <param name="buttons">The buttons to display in the message box. The default is <see cref="MessageBoxButtons.OK"/>.</param>
-/// <param name="icon">The icon to display in the message box. The default is <see cref="MessageBoxIcon.None"/>.</param>
-/// <returns>A <see cref="DialogResult"/> value that indicates which message box button was clicked by the user.</returns>
+        /// <summary>
+        /// Displays a message box with the specified text, title, buttons, and icon.
+        /// </summary>
+        /// <param name="message">The text to display in the message box.</param>
+        /// <param name="title">The title of the message box.</param>
+        /// <param name="buttons">The buttons to display in the message box. The default is <see cref="MessageBoxButtons.OK"/>.</param>
+        /// <param name="icon">The icon to display in the message box. The default is <see cref="MessageBoxIcon.None"/>.</param>
+        /// <returns>A <see cref="DialogResult"/> value that indicates which message box button was clicked by the user.</returns>
         public static DialogResult Show(
             string message,
             string title,

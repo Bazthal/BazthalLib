@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Windows.Forms;
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib.Systems.IO
 {
@@ -167,26 +168,66 @@ namespace BazthalLib.Systems.IO
         }
 
         /// <summary>
-        /// Displays a save file dialog and returns the selected file path.
+        /// Displays a Save File dialog box that allows the user to specify a file name and location to save a file.
         /// </summary>
-        /// <param name="filename">The default file name to display in the dialog. Can be an empty string.</param>
-        /// <param name="filter">The filter string that determines the choices that appear in the "Save as type" box. Can be an empty string.</param>
-        /// <param name="title">The title of the save file dialog. Defaults to "Save File".</param>
-        /// <returns>The full path of the file selected by the user, or <see langword="null"/> if the dialog is canceled.</returns>
-        public static string SaveFile(string filename = "", string filter = "", string title = "Save File")
+        /// <remarks>This method uses a standard Save File dialog box to allow the user to select a file
+        /// path. If <paramref name="showOverwritePrompt"/> is <see langword="true"/> and the selected file already
+        /// exists, the user will be prompted to confirm overwriting the file. If the user declines, the method returns
+        /// <see langword="null"/>.</remarks>
+        /// <param name="filename">The default file name to display in the dialog box. Can be an empty string to omit a default name.</param>
+        /// <param name="filter">The file type filter string to display in the dialog box, such as "Text files (*.txt)|*.txt|All files
+        /// (*.*)|*.*". Can be an empty string to show all files.</param>
+        /// <param name="title">The title of the dialog box. Defaults to "Save File".</param>
+        /// <param name="showOverwritePrompt">A value indicating whether to prompt the user for confirmation if the selected file already exists. If <see
+        /// langword="true"/>, the user will be prompted to confirm overwriting an existing file.</param>
+        /// <returns>The full path of the file selected by the user, or <see langword="null"/> if the user cancels the operation
+        /// or declines to overwrite an existing file.</returns>
+        public static string SaveFile(string filename = "", string filter = "", string title = "Save File", bool showOverwritePrompt = true)
         {
-            SaveFileDialog saveFileDialog = new()
+            using (var saveFileDialog = new SaveFileDialog
             {
                 Filter = filter,
                 FileName = filename,
-                Title = title
-            };
-
-            if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                Title = title,
+                OverwritePrompt = false
+            })
             {
-                return saveFileDialog.FileName;
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    var selectedPath = saveFileDialog.FileName;
+
+                    if (showOverwritePrompt && File.Exists(selectedPath))
+                    {
+                        if (!ConfirmOverwrite(selectedPath))
+                            return null;
+                    }
+
+                    return selectedPath;
+                }
+
+                return null;
             }
-            return null;
+        }
+
+        /// <summary>
+        /// Displays a confirmation dialog to the user asking whether to overwrite an existing file.
+        /// </summary>
+        /// <remarks>The method extracts the file name from the provided path and displays it in the
+        /// confirmation dialog. The dialog includes "Yes" and "No" options, and a warning icon to indicate the
+        /// potential impact of the action.</remarks>
+        /// <param name="filePath">The full path of the file that already exists.</param>
+        /// <returns><see langword="true"/> if the user confirms the overwrite; otherwise, <see langword="false"/>.</returns>
+        private static bool ConfirmOverwrite(string filePath)
+        {
+            var cursorPos = Cursor.Position;
+            string fileName = Path.GetFileName(filePath);
+                var result = ThemableMessageBox.ShowAt(cursorPos,
+                    $"The file \"{fileName}\" already exists.\nDo you want to replace it?",
+                    "Confirm Overwrite",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                return result == DialogResult.Yes;           
         }
 
         /// <summary>
@@ -207,9 +248,9 @@ namespace BazthalLib.Systems.IO
                         
             string dest = Path.Combine(folder, $"{fileName}_{DateTime.Now:yyyyMMdd_HHmmss}{extention}");
 
-            DebugUtils.Log("Backup", "Setup", $"Orignal File:{origFile}\nFolder: {folder}\nFileName: {fileName}\nExtention: {extention}\nDestination: {dest}");
+            DebugUtils.Log("Backup", "Setup", $"Orignal File:{origFile}\nFolder: {folder}\nFileName: {fileName}\nExtention: {extention}\nDestination: {dest}", logLevel: LogLevel.Info);
             try { System.IO.File.Copy(origFile, dest); }
-            catch (Exception ex) { DebugUtils.Log("Backup", "Backup Old", $"Unable to backup old file - {ex.Message}");   }
+            catch (Exception ex) { DebugUtils.Log("Backup", "Backup Old", $"Unable to backup old file - {ex.Message}", logLevel: LogLevel.Error);   }
 
             if (string.IsNullOrWhiteSpace(folder)) folder = ".";
             var backups = System.IO.Directory.GetFiles(folder, $"{fileName}_*{extention}")
@@ -219,7 +260,7 @@ namespace BazthalLib.Systems.IO
 
             foreach (var old in backups)
                 try { System.IO.File.Delete(old); }
-                catch (Exception ex ){ DebugUtils.Log("Backup", "Prune Old", $"Unable to delete old file {ex.Message}"); }
+                catch (Exception ex ){ DebugUtils.Log("Backup", "Prune Old", $"Unable to delete old file {ex.Message}", logLevel: LogLevel.Error); }
 
             
         }
@@ -227,7 +268,7 @@ namespace BazthalLib.Systems.IO
         /// <summary>
         /// Creates a backup of the specified file
         /// </summary>
-        /// <remarks>The method copies the original file to a new location with a migragted label timestamp appended to its
+        /// <remarks>The method copies the original file to a new location with a migrated label timestamp appended to its
         /// name, effectively creating a backup.</remarks>
         /// <param name="oldFile">The path of the original file to back up. This parameter cannot be null or empty.</param>
         public static void MigrationBackUp(string oldFile)
@@ -238,7 +279,7 @@ namespace BazthalLib.Systems.IO
 
             string dest = Path.Combine(folder, $"{fileName}-Migrated_{DateTime.Now:yyyyMMdd_HHmmss}{extention}");
             try { System.IO.File.Copy(oldFile, dest); }
-            catch (Exception ex) { DebugUtils.Log("Migration Backup", "Failed", ex.Message); }
+            catch (Exception ex) { DebugUtils.Log("Migration Backup", "Failed", ex.Message, logLevel: LogLevel.Error); }
         }
     }
 

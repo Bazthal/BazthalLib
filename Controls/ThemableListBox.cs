@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using BazthalLib.UI;
 using BazthalLib.Events;
+using static BazthalLib.DebugUtils;
 
 
 namespace BazthalLib.Controls
@@ -1421,7 +1422,7 @@ namespace BazthalLib.Controls
             }
             catch (Exception ex)
             {
-                DebugUtils.Log("Move Selected Items", "ThemableListBox", ex.Message);
+                DebugUtils.Log("Move Selected Items", "ThemableListBox", ex.Message, logLevel: LogLevel.Info);
             }
 
 

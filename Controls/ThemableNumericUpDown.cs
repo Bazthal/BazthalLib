@@ -3,6 +3,8 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 using BazthalLib.UI;
+using static BazthalLib.DebugUtils;
+
 
 namespace BazthalLib.Controls
 {
@@ -347,8 +349,8 @@ namespace BazthalLib.Controls
         {
             if (!UseThemeColors || colors == null)
             {
-                DebugUtils.LogIf(colors == null, "Theming", "ThemableNumericUpDown", "ThemeColors is null.");
-                DebugUtils.LogIf(!_useThemeColors, "Theming", "ThemableNumericUpDown", "Skipping theme assignment");
+                DebugUtils.LogIf(colors == null, "Theming", "ThemableNumericUpDown", "ThemeColors is null.", logLevel: LogLevel.Error);
+                DebugUtils.LogIf(!_useThemeColors, "Theming", "ThemableNumericUpDown", "Skipping theme assignment", logLevel: LogLevel.Info);
                 return;
             }
             _themeColors = colors;

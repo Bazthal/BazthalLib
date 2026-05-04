@@ -1,12 +1,58 @@
-﻿using System;
+﻿using BazthalLib.Controls;
+using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
-using BazthalLib.Controls;
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib.UI
 {
+    /// <summary>
+    /// Provides functionality to retrieve the current Windows accent color.
+    /// </summary>
+    /// <remarks>This class accesses the Windows registry to obtain the accent color used by the system. If
+    /// the registry key is not found or an error occurs, a default color is returned.</remarks>
+    public static class WindowsAccentColor
+    {
+        /// <summary>
+        /// Retrieves the current Windows accent color from the system registry.
+        /// </summary>
+        /// <remarks>This method attempts to access the Windows registry to obtain the accent color used
+        /// by the system. If the registry key or value is not found, or if an error occurs during access, the method
+        /// returns a default color of <see cref="Color.DodgerBlue"/>.</remarks>
+        /// <returns>A <see cref="Color"/> structure representing the current Windows accent color. If the accent color cannot be
+        /// retrieved, returns <see cref="Color.DodgerBlue"/>.</returns>
+        public static Color GetAccentColor()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(@"Software\\Microsoft\\Windows\\DWM");
+                if (key != null)
+                {
+                    var value = key.GetValue("ColorizationColor");
+                    if (value is int colorValue)
+                    {
+                        byte a = (byte)((colorValue >> 24) & 0xFF);
+                        byte r = (byte)((colorValue >> 16) & 0xFF);
+                        byte g = (byte)((colorValue >> 8) & 0xFF);
+                        byte b = (byte)(colorValue & 0xFF);
+                        if (a == 0) a = 255;
+
+                        return Color.FromArgb(a, r, g, b);
+                    }
+                }
+            }
+            catch
+            {
+                // ignore registry access errors
+            }
+
+            return Color.DodgerBlue;
+        }
+    }
     public class Theming
     {
         private static class AutoRegisterSystem
@@ -74,11 +120,11 @@ namespace BazthalLib.UI
             }
         }
 
-/// <summary>
-/// Specifies the available themes for an application.
-/// </summary>
-/// <remarks>The <see cref="AppTheme"/> enumeration provides options for setting the visual theme of an
-/// application.</remarks>
+        /// <summary>
+        /// Specifies the available themes for an application.
+        /// </summary>
+        /// <remarks>The <see cref="AppTheme"/> enumeration provides options for setting the visual theme of an
+        /// application.</remarks>
         public enum AppTheme
         {
             System,
@@ -142,7 +188,7 @@ namespace BazthalLib.UI
         /// defaults to <see cref="AppTheme.System"/>.</param>
         public static void SetTheme(AppTheme theme)
         {
-            DebugUtils.Log("Theming", "SetTheme", $"Setting theme to {theme}");
+            DebugUtils.Log("Theming", "SetTheme", $"Setting theme to {theme}", logLevel: LogLevel.Info);
 
             // If custom is selected but colors not set, fallback to System
             if (theme == AppTheme.Custom && CustomThemeColors == null)
@@ -207,7 +253,8 @@ namespace BazthalLib.UI
                     BackColor = SystemColors.Control,
                     ForeColor = SystemColors.ControlText,
                     BorderColor = SystemColors.ActiveBorder,
-                    AccentColor = Color.DodgerBlue,
+                    //AccentColor = Color.DodgerBlue,
+                    AccentColor = WindowsAccentColor.GetAccentColor(),
                     SelectedItemBackColor = SystemColors.Highlight,
                     SelectedItemForeColor = SystemColors.HighlightText,
                     DisabledColor = SystemColors.ControlDark

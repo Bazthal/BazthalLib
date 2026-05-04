@@ -1,4 +1,56 @@
-﻿## 1.1.5
+﻿# BazthalLib Changelog
+
+## 1.2.5
+
+### Message Box Enhancements
+- Added a `ShowAt` method to allow specifying a location for centering the message box.
+- Enabled system sound playback for different icon types (Info, Warning, Error, Question).
+- Updated to tint icons using `TintedImageRenderer` for consistent theming.
+- Replaced overwrite confirmation messagebox to use `ThemableMessageBox` allowing for consistent theming.
+
+### Themable Controls Improvements
+- Introduced TintedImage support to `ThemablePictureBox`.
+  - Tinted Images will use SizeMode along with AutoScaleImage to determine rendering size.
+- `ThemablePictureBox` replaced the `WndProc` override with an `OnPaint` override.
+- Added `ShowDisabledState` to `ThemableTextbox` to allow textbox to keep the visuals on for readonly.
+  - Default is `true` to maintain existing behavior.
+  - Same property added to `ThemableRichTextBox`, `ThemableMaskedTextBox` and `ThemableToolStripTextBox`.
+- Added an option to resize tinted images to match button dimensions in `ThemableButton`.
+  - The same property is exposed on `ThemableToolStripButton`.
+
+### Logging and Debugging
+- Updated `DebugUtils.Log` to use `Trace` instead of `Debug`, enabling console output in release builds of the library.
+- Added `LogLevel` enum for log severity:
+  - Info, Warning, Error, Critical, Debug, Obsolete.
+- Added `LogCategory` enum for message categories:
+  - General, Network, UI, Database, Performance, Security, Configuration, Serialization, Forms, Theme, System.
+- Added `LogName` enum for log sources:
+  - Initialization, Connection, UserAction, Query, Update, Deletion.
+- Added optional overload to `Log` method to accept `LogCategory` and `LogName` parameters.
+- Updated `DebugUtils.Log` and `DebugUtils.LogIf` to accept a `LogLevel` parameter.
+- Added `LogObsoleteUsage` to log warnings for obsolete API usage.
+- Changed `includeTimestamp` to default to `true` in `DebugUtils.Log` and `DebugUtils.LogIf`.
+  - `DebugUtils.LogIf` now delegates to `Log` internally for consistent behavior.
+
+### WinForms API Changes
+- Changed `WinForms.OpenForm` to a generic method to support forms that require constructor arguments.
+- The original `WinForms.OpenForm` overload has been marked obsolete (non-breaking) and will be removed in a future release.
+- `WinForms.CloseForm` is now a more generic method as well with similar obsolescence handling for the original overload.
+
+### Image Rendering
+- `TintedImageRenderer` Now supports downscaling tinted images via the `ImageQuality` enum for improved performance and quality control.
+
+### Serialization and JSON
+- Added a JSON converter that can parse inline JSON strings embedded within another JSON value.
+  - Moved the other converters to the `Extensibility.Serialization` namespace.
+  - The original converters in the previous namespace have been marked obsolete and will be removed in a future update.
+  - `ThemeColorSetter` has been updated to use the new namespace.
+
+### System Theme Detection
+- System Theme now attempts to read the accent color from the registry key `Software\Microsoft\Windows\DWM`.
+  - If that registry key is unavailable or unreadable, the accent color falls back to `Color.DodgerBlue`.
+
+## 1.1.5
 - Added item reordering to `ThemableListBox`, supporting both single and multi-selection. Reordering can be performed using mouse drag or by pressing Ctrl + Arrow Up/Down keys.
 - Clicking on the track of `ThemableScrollBar` now moves the thumb toward the cursor by `LargeChange`.
   - Holding down the mouse button will repeat this action until the thumb reaches the cursor.

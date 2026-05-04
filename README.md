@@ -16,15 +16,16 @@ Library was built alongside projects using it so everything was added to fill a 
 - JSON support via `ThemeColorsJsonConverter.cs` for saving/loading themes.
 
 ### Themable Controls
-A full suite of UI elements with built-in theme awareness:
+A suite of UI elements with built-in theme awareness:
 
-Category	Included Controls
-Buttons	ThemableButton, ThemableToolStripButton, ThemableRadioButton
-Inputs	ThemableTextBox, ThemableComboBox, ThemableCheckBox, ThemableNumericUpDown
-Lists	ThemableListBox, ThemableOptionListBox
-Panels & Grouping	ThemablePanel, ThemableGroupBox, ThemableTabControlBase, ThemableTabControlHeader
-ToolStrips	ThemableToolStrip, ThemableStatusStrip, ThemableToolStripTextBox, ThemableToolStripProgressBar, etc.
-Misc	ThemableProgressBar, ThemableTrackBar, ThemableColorPickerDialog, ThemableProcessingDialog, ThemableMessageBox
+| Category | Included Controls |
+|--------|------------------|
+|Buttons|	ThemableButton, ThemableToolStripButton, ThemableRadioButton|
+|Inputs	|ThemableTextBox, ThemableComboBox, ThemableCheckBox, ThemableNumericUpDown|
+|Lists	|ThemableListBox, ThemableOptionListBox|
+|Panels & Grouping | ThemablePanel, ThemableGroupBox, ThemableTabControlBase, ThemableTabControlHeader|
+|ToolStrips|	ThemableToolStrip, ThemableStatusStrip, ThemableToolStripTextBox, ThemableToolStripProgressBar, etc.|
+|Misc|	ThemableProgressBar, ThemableTrackBar, ThemableColorPickerDialog, ThemableProcessingDialog, ThemableMessageBox|
 
 All components implement or inherit from `IThemableControl`.
 
@@ -48,12 +49,15 @@ All components implement or inherit from `IThemableControl`.
 - Apps needing runtime theme switching or user-defined color customization
 
 ## Project Structure
-Folder	Description
-Controls	All themable UI components
-Configuration	Theme persistence and JSON handling
-UI	Theming engine and rendering tools
-Systems	File handling, execution, networking logic
-Resources	Assets for Color Picker and Theme Selector components
+|Folder |	Description|
+|------|------------|
+|Configuration	|	Theme persistence and JSON handling |
+|Controls |	All themable UI components|
+|Events |	Custom event argument classes |
+|Extensibility |	Custom converters and serialization helpers |
+|Resources |	Assets for Color Picker and Theme Selector components |
+|Systems |	File handling, execution, networking logic |
+|UI	|	Theming engine and rendering tools |
 
 ## Color Picker Preview
 - Compact and expanded versions of the built-in color picker

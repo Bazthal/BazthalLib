@@ -17,7 +17,7 @@ namespace BazthalLib.Controls
     {
         #region Fields and Properties
 
-        private string _version = "V1.0";
+        private string _version = "V1.1";
 
         /// <summary>
         /// Gets or sets a value indicating whether the theme colors are used for the text box appearance.
@@ -81,6 +81,14 @@ namespace BazthalLib.Controls
         [Browsable(false)]
         [EditorBrowsable(EditorBrowsableState.Never)]
         public ThemableTextBox TextBox => Control as ThemableTextBox;
+
+        [Browsable(true)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public bool ShowDisabledState
+        {
+            get => TextBox.ShowDisabledState;
+            set { TextBox.ShowDisabledState = value; Invalidate(); }
+        }
         #endregion Fields and Properties
 
         #region Constructor

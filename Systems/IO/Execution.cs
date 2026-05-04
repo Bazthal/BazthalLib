@@ -1,5 +1,5 @@
 ﻿using System.Diagnostics;
-
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib.Systems.IO
 {
@@ -18,11 +18,11 @@ namespace BazthalLib.Systems.IO
             if (System.IO.File.Exists(path))
             {
                 _ = Process.Start(path, args);
-                DebugUtils.Log("Process", "RunExecutable", $"Running Executable: \n  {path} \n with the following arguments: \n {args}");
+                DebugUtils.Log("Process", "RunExecutable", $"Running Executable: \n  {path} \n with the following arguments: \n {args}", logLevel: LogLevel.Info);
             }
             else
             {
-                DebugUtils.Log("Process", "RunExecutable", $"File not found: {path}");
+                DebugUtils.Log("Process", "RunExecutable", $"File not found: {path}", logLevel: LogLevel.Error);
             }
         }
 
@@ -53,13 +53,13 @@ namespace BazthalLib.Systems.IO
                 {
                     q += run.StandardOutput.ReadToEnd();
                 }
-                DebugUtils.Log("Process", "RunHiddenExecutable", $"Running Executable: \n  {path} \n with the following arguments: \n {args}");
+                DebugUtils.Log("Process", "RunHiddenExecutable", $"Running Executable: \n  {path} \n with the following arguments: \n {args}", logLevel: LogLevel.Info);
 
                 return q;
             }
             else
             {
-                DebugUtils.Log("Process", "RunHiddenExecutable", $"File not found: {path}");
+                DebugUtils.Log("Process", "RunHiddenExecutable", $"File not found: {path}", logLevel: LogLevel.Error);
             }
             return "";
         }

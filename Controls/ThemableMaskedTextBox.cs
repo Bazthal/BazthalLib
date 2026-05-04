@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 using BazthalLib.UI;
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib.Controls
 {
@@ -11,13 +12,14 @@ namespace BazthalLib.Controls
     {
 
         #region Fields and Properties
-        private string _version = "V1.0";
+        private string _version = "V1.1";
         private Color _borderColor = Color.Gray;
         private Color _accentColor = Color.DodgerBlue;
         private bool _useAccentBorder = false;
         private bool _focused = false;
         private bool _useThemeColors = true;
         private ThemeColors _themeColors = new();
+        private bool _showDisabledState = true;
 
         /// <summary>
         /// Gets the unique identifier for the ThemableMaskedTextBox control.
@@ -53,6 +55,20 @@ namespace BazthalLib.Controls
                 base.Enabled = true; // Always keep base enabled
                 ReadOnly = !value;   // Simulate disabled by setting ReadOnly
             }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to display disabled state colors when the control is in a read-only
+        /// state.
+        /// </summary>
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [Description("Whether to show disabled state colors when ReadOnly is true.")]
+        [DefaultValue(true)]
+        public bool ShowDisabledState
+        {
+            get => _showDisabledState;
+            set { _showDisabledState = value; Invalidate(); }
         }
 
         /// <summary>
@@ -174,8 +190,7 @@ namespace BazthalLib.Controls
         protected override void OnEnabledChanged(EventArgs e)
         {
             base.OnEnabledChanged(e);
-            System.Diagnostics.Debug.WriteLine($"ThemableMaskedTextBox: Enabled is set to {Enabled}.");
-
+            DebugUtils.Log("EnableChange", "ThemableMaskedTextBox", $"Enabled is set to {Enabled}.", logLevel: LogLevel.Info);
             if (!Enabled)
             {
                 ReadOnly = true;
@@ -195,7 +210,7 @@ namespace BazthalLib.Controls
         protected override void OnReadOnlyChanged(EventArgs e)
         {
             base.OnReadOnlyChanged(e);
-            DebugUtils.Log("ReadOnly", $"ThemableMaskedTextBox", "ReadOnly is set to {ReadOnly}");
+            DebugUtils.Log("ReadOnly", $"ThemableMaskedTextBox", "ReadOnly is set to {ReadOnly}", logLevel: LogLevel.Info);
             ApplyTheme(_themeColors);
 
         }
@@ -233,15 +248,15 @@ namespace BazthalLib.Controls
         {
             if (!_useThemeColors || colors == null)
             {
-                DebugUtils.LogIf(colors == null, "Theming", "ThemableTextBox", "ThemeColors is null.");
-                DebugUtils.LogIf(!_useThemeColors, "Theming", "ThemableTextBox", "Theming is disabled.");
+                DebugUtils.LogIf(colors == null, "Theming", "ThemableTextBox", "ThemeColors is null.", logLevel: LogLevel.Error);
+                DebugUtils.LogIf(!_useThemeColors, "Theming", "ThemableTextBox", "Theming is disabled.", logLevel: LogLevel.Info);
                 return;
             }
             _themeColors = colors;
             BackColor = colors.BackColor;
-            ForeColor = ReadOnly ? colors.DisabledColor : colors.ForeColor;
-            BorderColor = ReadOnly ? colors.DisabledColor : colors.BorderColor;
-            AccentColor = ReadOnly ? colors.DisabledColor : colors.AccentColor;
+            ForeColor = (ReadOnly && _showDisabledState) ? colors.DisabledColor : colors.ForeColor;
+            BorderColor = (ReadOnly && _showDisabledState) ? colors.DisabledColor : colors.BorderColor;
+            AccentColor = (ReadOnly && _showDisabledState) ? colors.DisabledColor : colors.AccentColor;
             Invalidate();
 
         }

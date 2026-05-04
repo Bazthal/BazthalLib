@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib.Configuration
 {
@@ -56,13 +57,13 @@ namespace BazthalLib.Configuration
                 }
                 else
                 {
-                    DebugUtils.Log("JSON", "Load", $"Config Not found.. Using default values");
+                    DebugUtils.Log("JSON", "Load", $"Config Not found.. Using default values", logLevel:LogLevel.Info);
                     Data = new T();
                 }
             }
             catch
             {
-                DebugUtils.Log("JSON", "Load", $"Config didn't load correctly.. Using default values");
+                DebugUtils.Log("JSON", "Load", $"Config didn't load correctly.. Using default values", logLevel: LogLevel.Info);
                 Data = new T(); // fallback on error
             }
         }
@@ -80,7 +81,7 @@ namespace BazthalLib.Configuration
             }
             catch
             {
-                DebugUtils.Log("JSON", "Save", $"Config didn't Save");
+                DebugUtils.Log("JSON", "Save", $"Config didn't Save", logLevel: LogLevel.Error);
             }
         }
     }

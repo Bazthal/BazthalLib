@@ -1,41 +1,105 @@
 ﻿
+using BazthalLib.Controls;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using BazthalLib.Controls;
+using System.IO;
+using System.Reflection;
 
 
 namespace BazthalLib.UI
 {
+
+    /// <summary>
+    /// Specifies the quality or characteristic of an image, typically used in rendering, processing, or analysis
+    /// contexts.
+    /// </summary>
+    /// <remarks>The <see cref="ImageQuality"/> enumeration provides predefined values to represent different
+    /// image quality states or characteristics. These values can be used to configure image processing operations,
+    /// rendering settings, or other domain-specific behaviors.</remarks>
+    public enum ImageQuality
+    {
+       /// <summary>
+       /// Represents a sharp musical note or symbol, typically used in music theory or notation.
+       /// </summary>
+       /// <remarks>This class or member may be used to define or manipulate sharp notes in a musical
+       /// context. Ensure proper usage in accordance with the musical scale or notation system being
+       /// implemented.</remarks>
+        Sharp,
+
+       /// <summary>
+       /// Represents a smoothing operation or behavior.
+       /// </summary>
+       /// <remarks>The specific meaning of "Smooth" depends on the context in which it is used.  It may
+       /// refer to a smoothing algorithm, a graphical rendering option, or another domain-specific operation.</remarks>
+        Smooth,
+
+        /// <summary>
+        /// Represents a balanced state or condition.
+        /// </summary>
+        /// <remarks>This enumeration value is typically used to indicate that a system, process, or
+        /// entity is in a state of equilibrium or balance.</remarks>
+        Balanced
+    }
+
     public class TintedImageRenderer
     {
-        private static readonly Dictionary<(Image, Color), Image> _cashe = new();
+        private static readonly Dictionary<(Image, Color), Image> _cache = new();
         // private static ContentAlignment alignment;
 
         /// <summary>
-        /// Draws a tinted image onto a specified graphics surface within given bounds and alignment.
+        /// Draws a tinted and optionally scaled image onto a specified graphics surface within the given bounds.
         /// </summary>
         /// <remarks>If the source image or graphics object is <see langword="null"/>, or if the bounds
-        /// have non-positive dimensions, the method returns without drawing.</remarks>
-        /// <param name="g">The <see cref="Graphics"/> object on which to draw the image. Cannot be <see langword="null"/>.</param>
-        /// <param name="src_Img">The source <see cref="Image"/> to be tinted and drawn. Cannot be <see langword="null"/>.</param>
+        /// have a width or height less than or equal to zero, the method does nothing. The method applies a tint to the
+        /// source image using the specified color, scales the image if a scale factor is provided, and aligns it within
+        /// the bounds based on the specified alignment. The interpolation mode is adjusted based on the specified image
+        /// quality for optimal rendering.</remarks>
+        /// <param name="g">The <see cref="Graphics"/> object used to draw the image. Cannot be <see langword="null"/>.</param>
+        /// <param name="src_Img">The source <see cref="Image"/> to be drawn. Cannot be <see langword="null"/>.</param>
         /// <param name="color">The <see cref="Color"/> used to tint the image.</param>
-        /// <param name="bounds">The <see cref="Rectangle"/> that defines the area within which the image should be drawn. Must have positive
-        /// width and height.</param>
+        /// <param name="bounds">The <see cref="Rectangle"/> that defines the area within which the image will be drawn.</param>
         /// <param name="alignment">The <see cref="ContentAlignment"/> that specifies how the image should be aligned within the bounds.</param>
-        public static void Draw(Graphics g, Image src_Img, Color color, Rectangle bounds, ContentAlignment alignment)
+        /// <param name="scale">The scaling factor to apply to the image. Defaults to 1.0 (no scaling). Must be greater than 0.</param>
+        /// <param name="quality">The <see cref="ImageQuality"/> that determines the interpolation mode used for rendering the image. Defaults
+        /// to <see cref="ImageQuality.Balanced"/>.</param>
+        public static void Draw(Graphics g, Image src_Img, Color color, Rectangle bounds, ContentAlignment alignment, float scale = 1.0f, ImageQuality quality = ImageQuality.Balanced)
         {
             if (src_Img == null || g == null || bounds.Width <= 0 || bounds.Height <= 0)
                 return;
 
             var tintedImage = GetTintedImage(src_Img, color);
-            var imageRect = AlignImage(tintedImage.Size, bounds, alignment);
 
+            Size scaledSize = tintedImage.Size;
+            if (scale != 1.0f)
+            {
+                scaledSize = new Size(
+                    (int)(tintedImage.Width * scale),
+                    (int)(tintedImage.Height * scale)
+                );
+            }
+
+            var imageRect = AlignImage(scaledSize, bounds, alignment);
+
+            var oldMode = g.InterpolationMode;
+            switch (quality)
+            {
+                case ImageQuality.Sharp:
+                    g.InterpolationMode = InterpolationMode.NearestNeighbor;
+                    break;
+                case ImageQuality.Smooth:
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    break;
+                default:
+                    g.InterpolationMode = InterpolationMode.HighQualityBilinear;
+                    break;
+            }
             g.DrawImage(tintedImage, imageRect);
+            g.InterpolationMode = oldMode;
         }
-
+        
         /// <summary>
         /// Aligns an image within a specified bounding rectangle according to the given alignment.
         /// </summary>
@@ -69,6 +133,41 @@ namespace BazthalLib.UI
         }
 
         /// <summary>
+        /// Loads an embedded image resource from the specified assembly.
+        /// </summary>
+        /// <remarks>This method attempts to retrieve the specified embedded image resource from the
+        /// provided assembly. If the resource cannot be found, a warning is logged, and the method returns <see
+        /// langword="null"/>.</remarks>
+        /// <param name="resourcePath">The fully qualified name of the embedded resource to load.</param>
+        /// <param name="assembly">The assembly containing the embedded resource. Cannot be <see langword="null"/>.</param>
+        /// <returns>An <see cref="Image"/> object representing the loaded embedded image, or <see langword="null"/> if the
+        /// resource is not found.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="assembly"/> is <see langword="null"/>.</exception>
+        public static Image LoadEmbeddedImage(string resourcePath, Assembly assembly)
+        {
+            if (assembly == null)
+                throw new ArgumentNullException(nameof(assembly));
+
+            using Stream stream = assembly.GetManifestResourceStream(resourcePath);
+            DebugUtils.LogIf(stream == null, "UI.TintedImageRenderer", "LoadEmbededImage", $"Embedded image not found: {resourcePath}", false, logLevel: DebugUtils.LogLevel.Warning);
+
+            return stream != null ? Image.FromStream(stream) : null;
+        }
+        /// <summary>
+        /// Loads an embedded image resource from the specified resource path.
+        /// </summary>
+        /// <remarks>This method retrieves an embedded image resource from the calling assembly. Ensure
+        /// that the resource path is correct and that the image is properly embedded in the assembly's
+        /// resources.</remarks>
+        /// <param name="resourcePath">The path to the embedded image resource within the assembly.</param>
+        /// <returns>An <see cref="Image"/> object representing the loaded embedded image.</returns>
+        public static Image LoadEmbeddedImage(string resourcePath)
+        {
+            return LoadEmbeddedImage(resourcePath, Assembly.GetCallingAssembly());
+        }
+
+        /*
+        /// <summary>
         /// Loads an embedded image from the specified file path within the assembly.
         /// </summary>
         /// <remarks>Ensure that the specified file path is correct and that the image is embedded as a
@@ -79,9 +178,10 @@ namespace BazthalLib.UI
         {
             var asm = typeof(ThemeColorsSetter).Assembly;
             using var stream = asm.GetManifestResourceStream(embededFilePath);
+            DebugUtils.LogIf(stream == null, "UI.TintedImageRenderer", "LoadEmbededImage", $"Embedded image not found: {embededFilePath}", false, logLevel:DebugUtils.LogLevel.Warning);
             return stream != null ? Image.FromStream(stream) : null;
         }
-
+        */
         /// <summary>
         /// Applies a tint to the specified image using the given color and returns the tinted image.
         /// </summary>
@@ -97,7 +197,7 @@ namespace BazthalLib.UI
                 return null;
 
             var key = (srcImg, tintColor);
-            if (_cashe.TryGetValue(key, out var cached))
+            if (_cache.TryGetValue(key, out var cached))
                 return cached;
 
             Bitmap bmp = new Bitmap(srcImg.Width, srcImg.Height, PixelFormat.Format32bppArgb);
@@ -136,7 +236,7 @@ namespace BazthalLib.UI
                 }
             }
 
-            _cashe[key] = bmp;
+            _cache[key] = bmp;
             return bmp;
         }
 
@@ -179,17 +279,22 @@ namespace BazthalLib.UI
             if (srcImg == null || bounds.Width <= 0 || bounds.Height <= 0)
                 return null;
 
-            Bitmap bmp = GetTintedImage(srcImg, Color.White) as Bitmap;
-            if (bmp == null)
-                return null;
+            Rectangle imageRect = AlignImage(srcImg.Size, bounds, alignment);
+            Bitmap scaledBmp = new Bitmap(imageRect.Width, imageRect.Height);
+            using (Graphics g = Graphics.FromImage(scaledBmp))
+            {
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(srcImg, 0, 0, imageRect.Width, imageRect.Height);
+            }
+
+            Bitmap bmp = GetTintedImage(scaledBmp, Color.White) as Bitmap;
+            if (bmp == null) return null;
 
             bool[,] mask = new bool[bmp.Width, bmp.Height];
             for (int y = 0; y < bmp.Height; y++)
             {
                 for (int x = 0; x < bmp.Width; x++)
-                {
                     mask[x, y] = bmp.GetPixel(x, y).A > alphaThreshold;
-                }
             }
 
             var path = new GraphicsPath();
@@ -198,52 +303,39 @@ namespace BazthalLib.UI
                 for (int x = 1; x < bmp.Width - 1; x++)
                 {
                     if (!mask[x, y]) continue;
-
                     bool edge = !mask[x - 1, y] || !mask[x + 1, y] || !mask[x, y - 1] || !mask[x, y + 1];
                     if (edge)
-                    {
                         path.AddRectangle(new Rectangle(x, y, 1, 1));
-                    }
                 }
             }
 
-            Rectangle imageRect = AlignImage(bmp.Size, bounds, alignment);
-            float scaleX = (float)imageRect.Width / bmp.Width;
-            float scaleY = (float)imageRect.Height / bmp.Height;
-
-            var alignMatrix = new Matrix();
-            alignMatrix.Scale(scaleX, scaleY);
-            alignMatrix.Translate(imageRect.X, imageRect.Y, MatrixOrder.Append);
-            path.Transform(alignMatrix);
-
             if (paddingScale != 1f)
             {
-                RectangleF boundsF = path.GetBounds();
+                RectangleF pathBounds = path.GetBounds();
+
+                float maxScaleX = bounds.Width / pathBounds.Width;
+                float maxScaleY = bounds.Height / pathBounds.Height;
+                float safeScale = Math.Min(paddingScale, Math.Min(maxScaleX, maxScaleY));
 
                 var paddingMatrix = new Matrix();
-
-                paddingMatrix.Translate(
-                    -boundsF.X - boundsF.Width / 2,
-                    -boundsF.Y - boundsF.Height / 2,
-                    MatrixOrder.Append);
-
-                paddingMatrix.Scale(paddingScale, paddingScale, MatrixOrder.Append);
-
-                paddingMatrix.Translate(
-                    boundsF.X + boundsF.Width / 2,
-                    boundsF.Y + boundsF.Height / 2,
-                    MatrixOrder.Append);
-
+                paddingMatrix.Translate(-pathBounds.X - pathBounds.Width / 2, -pathBounds.Y - pathBounds.Height / 2, MatrixOrder.Append);
+                paddingMatrix.Scale(safeScale, safeScale, MatrixOrder.Append);
+                paddingMatrix.Translate(pathBounds.X + pathBounds.Width / 2, pathBounds.Y + pathBounds.Height / 2, MatrixOrder.Append);
                 path.Transform(paddingMatrix);
             }
 
+            var translateMatrix = new Matrix();
+            translateMatrix.Translate(imageRect.X, imageRect.Y, MatrixOrder.Append);
+            path.Transform(translateMatrix);
+
             using (var clipRegion = new Region(bounds))
+            using (var pathRegion = new Region(path))
             {
-                clipRegion.Intersect(path);
+                clipRegion.Intersect(pathRegion);
                 return GraphicsPathFromRegion(clipRegion);
             }
-
         }
+
 
         /// <summary>
         /// Converts a <see cref="Region"/> into a <see cref="GraphicsPath"/> by extracting its rectangular components.
@@ -309,5 +401,6 @@ namespace BazthalLib.UI
 
             return path;
         }
+
     }
 }

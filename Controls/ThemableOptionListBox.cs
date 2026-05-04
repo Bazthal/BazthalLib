@@ -21,14 +21,27 @@ namespace BazthalLib.Controls
         Checkbox
     }
 
+    public enum CheckBehavior
+    {
+        CheckOnClick,
+        ClickOnHighlighted,
+        NoCheckJustHighlight
+    }
+
     public class ThemableOptionListBox : ThemableListBox
     {
         #region Fields
-        private string _version = "V1.1";
+        private string _version = "V1.2";
         private SelectionVisual _selectionStyle = SelectionVisual.None;
         private int _selectedRadioIndex = -1;
         private HashSet<int> _checkedIndices = new();
         private bool _allowSelectionHighlight = false;
+
+        private int _clickThresholdMs = 1000;
+        private int _lastClickedIndex = -1;
+        private DateTime _lastClickTime = DateTime.MinValue;
+        private CheckBehavior _checkBehavior = CheckBehavior.CheckOnClick;
+        
         #endregion Fields
 
         #region Properties
@@ -121,6 +134,20 @@ namespace BazthalLib.Controls
             ? CheckedIndices.Where(i => i >= 0 && i < Items.Count).Select(i => Items[i])
             : Enumerable.Empty<object>();
 
+        [Browsable(true)]
+        [Category("BazthalLib - Behavior")]
+        [Description("Determines how checkbox toggling is handled: CheckOnClick, ClickOnHighlighted, or NoCheckJustHighlight.")]
+        [DefaultValue(CheckBehavior.CheckOnClick)]
+        public CheckBehavior CheckBehaviorMode
+        {
+            get => _checkBehavior;
+            set
+            {
+                _checkBehavior = value;
+                Invalidate();
+            }
+        }
+        
         #endregion Properties
 
         #region Contstructor
@@ -285,6 +312,77 @@ namespace BazthalLib.Controls
         #endregion Drawing
 
         #region Mouse Interaction
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+
+            // only respond to left-clicks
+            if (e.Button != MouseButtons.Left) return;
+
+            int index = IndexFromPoint(e.Location);
+            if (index < 0 || index >= Items.Count) return;
+
+            switch (SelectionStyle)
+            {
+                case SelectionVisual.Radio:
+                    SelectedRadioIndex = index;
+                    break;
+
+                case SelectionVisual.Checkbox:
+                    switch (_checkBehavior)
+                    {
+                        case CheckBehavior.CheckOnClick:
+                            ToggleCheck(index);
+                            break;
+
+                        case CheckBehavior.ClickOnHighlighted:
+                            // If the item is not currently selected -> just select it
+                            if (SelectedIndex != index)
+                            {
+                                SelectedIndex = index;
+                                // reset last-click tracking for this item
+                                _lastClickedIndex = index;
+                                _lastClickTime = DateTime.Now;
+                            }
+                            else
+                            {
+                                // item is already highlighted/selected
+                                var now = DateTime.Now;
+                                var elapsedMs = (now - _lastClickTime).TotalMilliseconds;
+
+                                // Toggle if this click is within the configured threshold (i.e., a slow double-click)
+                                if (_lastClickedIndex == index && elapsedMs <= _clickThresholdMs)
+                                {
+                                    ToggleCheck(index);
+                                    // reset last-click state so it won't immediately toggle again
+                                    _lastClickedIndex = -1;
+                                    _lastClickTime = DateTime.MinValue;
+                                }
+                                else
+                                {
+                                    // update the last click time (first click, or too-slow click)
+                                    _lastClickedIndex = index;
+                                    _lastClickTime = now;
+                                }
+                            }
+                            break;
+
+                        case CheckBehavior.NoCheckJustHighlight:
+                            SelectedIndex = index;
+                            break;
+                    }
+                    break;
+
+                default:
+                    // for non-option selection styles we might want to preserve default behavior
+                    break;
+            }
+        }
+
+
+
+        /*
         /// <summary>
         /// Handles the mouse down event for the control, updating the selection based on the current selection style.
         /// </summary>
@@ -313,6 +411,26 @@ namespace BazthalLib.Controls
                     break;
             }
         }
+        */
         #endregion Mouse Interaction
+
+        #region Helper Methods
+
+        /// <summary>
+        /// Toggles the checked state of the item at the specified index.
+        /// </summary>
+        /// <remarks>If the item at the specified index is currently checked, it will be unchecked;
+        /// otherwise, it will be checked. This method will update the visual state of the control by invalidating
+        /// it.</remarks>
+        /// <param name="index">The zero-based index of the item to toggle. Must be a valid index within the collection.</param>
+        private void ToggleCheck(int index)
+        {
+            if (CheckedIndices.Contains(index))
+                CheckedIndices.Remove(index);
+            else
+                CheckedIndices.Add(index);
+            Invalidate();
+        }
+        #endregion Helper Methods
     }
 }

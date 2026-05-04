@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 using BazthalLib.UI;
+using static BazthalLib.DebugUtils;
 
 
 namespace BazthalLib.Controls
@@ -301,7 +302,7 @@ namespace BazthalLib.Controls
             if (newIndex != oldIndex)
             {
                 SelectedIndex = newIndex; // triggers OnSelectedIndexChanged
-                DebugUtils.Log("ComboBox", "Index Changed", $"New index: {SelectedIndex}");
+                DebugUtils.Log("ComboBox", "Index Changed", $"New index: {SelectedIndex}", logLevel: LogLevel.Info);
                 Invalidate(); // redraw control if necessary
             }
         }
@@ -319,7 +320,7 @@ namespace BazthalLib.Controls
         protected override void OnGotFocus(EventArgs e)
         {
             base.OnGotFocus(e);
-            DebugUtils.Log("OnGotFocus", "ThemableComboBox", "Showing dropdown on focus.");
+            DebugUtils.Log("OnGotFocus", "ThemableComboBox", "Showing dropdown on focus.", logLevel: LogLevel.Info);
             Invalidate(); // Redraw for focus rectangle
         }
 
@@ -332,7 +333,7 @@ namespace BazthalLib.Controls
         protected override void OnLostFocus(EventArgs e)
         {
             base.OnLostFocus(e);
-            DebugUtils.Log("OnLostFocus", "ThemableComboBox", "Hiding dropdown on lost focus.");
+            DebugUtils.Log("OnLostFocus", "ThemableComboBox", "Hiding dropdown on lost focus.", logLevel: LogLevel.Info);
             BeginInvoke(new Action(() =>
             {
                 if (!this.Focused && (_dropdownList == null || !_dropdownList.Focused))

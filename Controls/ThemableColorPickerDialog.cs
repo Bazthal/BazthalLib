@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Windows.Forms;
 using BazthalLib.UI;
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib.Controls
 {
@@ -146,7 +147,7 @@ namespace BazthalLib.Controls
 
             eyedropperButton = new ThemableButton
             {
-                TintedImage = TintedImageRenderer.LoadEmbededImage("BazthalLib.Resources.ColorPicker.png"),
+                TintedImage = TintedImageRenderer.LoadEmbeddedImage("BazthalLib.Resources.ColorPicker.png"),
                 UseAccentForTintedImage = true,
                 FocusWrapAroundImage = true,
                 Location = new Point(300, 180),
@@ -259,7 +260,7 @@ namespace BazthalLib.Controls
         /// color.</remarks>
         private void UpdateFromHex()
         {
-            DebugUtils.Log("Color Picker", $"Hex input:", "{hexBox.Text}");
+            DebugUtils.Log("Color Picker", $"Hex input:", "{hexBox.Text}", logLevel: LogLevel.Info);
 
             try
             {

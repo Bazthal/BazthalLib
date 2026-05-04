@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Net.Http;
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib.Systems.Network
 {
@@ -31,13 +32,13 @@ namespace BazthalLib.Systems.Network
                     }
                     else
                     {
-                        DebugUtils.Log("Networking", "DowloadFile", $"Failed to download file. Status code: {response.StatusCode}");
+                        DebugUtils.Log("Networking", "DowloadFile", $"Failed to download file. Status code: {response.StatusCode}", logLevel: LogLevel.Error);
                     }
                 
             }
             else
             {
-                DebugUtils.Log("Networking", "DownloadFile", "No network connection detected. Please check your network connection and try again.");
+                DebugUtils.Log("Networking", "DownloadFile", "No network connection detected. Please check your network connection and try again.", logLevel: LogLevel.Error);
             }
         }
     }

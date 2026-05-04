@@ -17,7 +17,7 @@ namespace BazthalLib.Controls
 
         #region Fields and Properties
 
-        private string _version = "V1.1";
+        private string _version = "V1.2";
 
         /// <summary>
         /// Gets the unique identifier for the control, incorporating the current version.
@@ -149,6 +149,27 @@ namespace BazthalLib.Controls
         {
             get => ThemeButton.FocusWrapAroundImage;
             set { ThemeButton.FocusWrapAroundImage = value; Invalidate(); }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the tinted image should be automatically downscaled  to fit within
+        /// the bounds of the button.
+        /// </summary>
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public bool AutoScaleTintedImage {
+            get => ThemeButton.AutoScaleTintedImage;
+            set { ThemeButton.AutoScaleTintedImage = value; Invalidate(); }
+        }
+
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public ImageQuality ImageScalingQuality
+            {
+            get => ThemeButton.ImageScalingQuality;
+            set { ThemeButton.ImageScalingQuality = value; Invalidate(); }
         }
 
         /// <summary>

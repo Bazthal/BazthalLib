@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib.Configuration
 {
@@ -23,7 +24,7 @@ namespace BazthalLib.Configuration
 
             if (!System.IO.File.Exists(filePath))
             {
-                DebugUtils.Log("Configuration", "INI Load", "Config file not found.");
+                DebugUtils.Log("Configuration", "INI Load", "Config file not found.", logLevel:DebugUtils.LogLevel.Warning);
                 return configData;
             }
 
@@ -76,7 +77,7 @@ namespace BazthalLib.Configuration
             }
             else
             {
-                DebugUtils.Log("Configuration", "INI Edit", "Config file not found. Creating new config file.");
+                DebugUtils.Log("Configuration", "INI Edit", "Config file not found. Creating new config file.", logLevel: LogLevel.Info);
                 foreach (var section in changes)
                 {
                     lines.Add("[" + section.Key + "]");

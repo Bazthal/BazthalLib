@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0-windows</TargetFramework>
+    <TargetFrameworks>net9.0-windows</TargetFrameworks>
     <OutputType>Library</OutputType>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	  <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
@@ -16,11 +16,14 @@
 	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
 	  <RepositoryType>git</RepositoryType>
 	  <RepositoryUrl>https://github.com/Bazthal/BazthalLib</RepositoryUrl>
-	  <Version>1.1.5</Version>
+    <PackageVersion>1.1.6</PackageVersion>
+    <AssemblyVersion>$(PackageVersion)</AssemblyVersion>
+    <FileVersion>$(PackageVersion)</FileVersion>
+    <Version>$(PackageVersion)</Version>
 	<Deterministic>true</Deterministic>
 	<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     <PackageProjectUrl></PackageProjectUrl>
-  </PropertyGroup>
+  </PropertyGroup>  
   <ItemGroup>
     <Compile Remove="packages\**" />
     <EmbeddedResource Remove="packages\**" />
@@ -32,7 +35,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
-	  <None Include="README.md" Pack="true" PackagePath="" />
+	<None Include="README.md" Pack="true" PackagePath="" />
+	<None Include="LICENSE" Pack="true" PackagePath="" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />

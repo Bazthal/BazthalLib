@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using BazthalLib.UI;
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib.Controls
 {
@@ -516,8 +517,8 @@ namespace BazthalLib.Controls
 
             if (!_useThemeColors || colors == null)
             {
-                DebugUtils.LogIf(colors == null, "Theming", "ThemableTabControlHeader", "ThemeColors is null.");
-                DebugUtils.LogIf(!_useThemeColors, "Theming", "ThemableTabControlHeader", "Theming is disabled.");
+                DebugUtils.LogIf(colors == null, "Theming", "ThemableTabControlHeader", "ThemeColors is null.", logLevel: LogLevel.Error);
+                DebugUtils.LogIf(!_useThemeColors, "Theming", "ThemableTabControlHeader", "Theming is disabled.", logLevel: LogLevel.Info);
                 return;
             }
 

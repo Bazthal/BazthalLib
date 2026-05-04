@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using BazthalLib.UI;
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib.Controls
 {
@@ -12,7 +13,7 @@ namespace BazthalLib.Controls
     public class ThemableButton : Button, IThemableControl
     {
         #region Fields
-        private readonly string _version = "V1.4";
+        private readonly string _version = "V1.5";
         private bool _useThemeColors = true;
         private ThemeColors _themeColors = new();
         private bool _roundedCorners = true;
@@ -31,7 +32,7 @@ namespace BazthalLib.Controls
         private bool _allowClickHighlight = true; // Whether to allow click highlight or not
         private bool _useTightFocusBorder = true; // Whether to have padding or not
         private bool _focusWrapAroundImage = false; // Whether to wrap around the image or not
-        private bool _matchImageSize = true; // Whether to match the image size with the button size or not
+        private bool _matchImageSize = true; // Whether to match the image size with the button size or not 
         private ContentAlignment _imageAlign = ContentAlignment.MiddleCenter;
 
         #endregion Fields
@@ -122,6 +123,28 @@ namespace BazthalLib.Controls
                 Invalidate(); // Force redraw to apply changes
             }
         }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the tinted image should be automatically downscaled  to fit within
+        /// the bounds of the button.
+        /// </summary>
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [Description("Whether to automatically downscale the tinted image to fit within the button bounds.")]
+        [DefaultValue(false)]
+        public bool AutoScaleTintedImage { get; set; }
+
+        /// <summary>
+        /// Gets or sets the quality level used for scaling the tinted image when it is drawn.
+        /// </summary>
+        /// <remarks>Higher quality levels may result in better visual fidelity but could impact
+        /// performance.</remarks>
+        [Browsable(true)]
+        [Category("BazthalLib - Appearance")]
+        [Description("Determines how the tinted image is scaled when drawn.")]
+        [DefaultValue(ImageQuality.Balanced)]
+        public ImageQuality ImageScalingQuality { get; set; } = ImageQuality.Balanced;
+
 
         /// <summary>
         /// Gets or sets a value indicating whether the button size should match the size of the tinted image.
@@ -460,7 +483,8 @@ namespace BazthalLib.Controls
                     baseTintColor = GetClickHighlightColor(baseTintColor);
                 }
 
-                TintedImageRenderer.Draw(e.Graphics, _tintedImage, baseTintColor, ClientRectangle, _imageAlign);
+                float scale = AutoScaleTintedImage ? CalculateDownscaleFactor(_tintedImage, ClientRectangle) : 1.0f;
+                TintedImageRenderer.Draw(e.Graphics, _tintedImage, baseTintColor, ClientRectangle, _imageAlign, scale, ImageScalingQuality);
             }
             else
             {
@@ -508,6 +532,25 @@ namespace BazthalLib.Controls
             }
 
             DrawCustomBorder(e);
+        }
+
+        /// <summary>
+        /// Calculates the downscale factor required to fit an image within the specified bounds.
+        /// </summary>
+        /// <param name="img">The image to be scaled. Cannot be <see langword="null"/>.</param>
+        /// <param name="bounds">The rectangular bounds within which the image should fit. The width and height must be greater than zero.</param>
+        /// <returns>The scaling factor as a <see cref="float"/> that, when applied to the image dimensions, ensures the image
+        /// fits within the bounds. Returns <c>1.0f</c> if the image is <see langword="null"/> or the bounds are
+        /// invalid.</returns>
+        private float CalculateDownscaleFactor(Image img, Rectangle bounds)
+        {
+            if (img == null || bounds.Width <= 0 || bounds.Height <= 0)
+                return 1.0f;
+
+            float scaleX = (float)bounds.Width / img.Width;
+            float scaleY = (float)bounds.Height / img.Height;
+
+            return Math.Min(scaleX, scaleY);
         }
 
         /// <summary>
@@ -566,14 +609,18 @@ namespace BazthalLib.Controls
         }
         
         /// <summary>
-        /// /// Adjusts the size of the button to match the dimensions of the tinted image, if applicable.
-        /// /// </summary>
-        /// /// <remarks>This method resizes the button to match the width and height of the tinted image when both <see
-        /// /// cref="_useTintedImage"/> is <see langword="true"/> and <see cref="_tintedImage"/> is not <see langword="null"/>. The
-        /// /// resizing only occurs if <see cref="_matchImageSize"/> is also <see langword="true"/>.</remarks>
+        /// Adjusts the size of the button to match the dimensions of the tinted image, if applicable.
+        /// </summary>
+        /// <remarks>The button's width and height are updated to match the dimensions of the tinted image
+        /// when the following conditions are met: <list type="bullet"> <item><description><see
+        /// langword="_useTintedImage"/> is <see langword="true"/>.</description></item> <item><description><see
+        /// langword="_tintedImage"/> is not <see langword="null"/>.</description></item> <item><description><see
+        /// langword="_matchImageSize"/> is <see langword="true"/>.</description></item> <item><description><see
+        /// langword="AutoScaleTintedImage"/> is <see langword="false"/>.</description></item> </list> If any of these
+        /// conditions are not met, the button's size remains unchanged.</remarks>
         private void ResizeButtonToImage()
         {
-            if (_useTintedImage && _tintedImage != null && _matchImageSize)
+            if (_useTintedImage && _tintedImage != null && _matchImageSize && !AutoScaleTintedImage)
             {
                 this.Width = _tintedImage.Width;
                 this.Height = _tintedImage.Height;
@@ -676,8 +723,8 @@ namespace BazthalLib.Controls
         {
             if (!_useThemeColors || colors == null)
             {
-                DebugUtils.LogIf(colors == null, "Theming", "ThemableButton", "ThemeColors is null.");
-                DebugUtils.LogIf(!_useThemeColors, "Theming", "ThemableButton", " Theming is disabled.");
+                DebugUtils.LogIf(colors == null, "Theming", "ThemableButton", "ThemeColors is null.", logLevel: LogLevel.Error);
+                DebugUtils.LogIf(!_useThemeColors, "Theming", "ThemableButton", " Theming is disabled.", logLevel: LogLevel.Info);
                 return;
             }
             _themeColors = colors;

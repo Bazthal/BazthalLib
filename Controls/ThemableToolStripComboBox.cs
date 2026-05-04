@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Windows.Forms.Design;
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib.Controls
 {
@@ -147,7 +148,7 @@ namespace BazthalLib.Controls
             {
                 ComboBox.SelectedIndex = value;
                 Invalidate();
-                DebugUtils.Log("SelectedIndex", "ThemableToolStripComboBox", $"{ComboBox.SelectedIndex}");
+                DebugUtils.Log("SelectedIndex", "ThemableToolStripComboBox", $"{ComboBox.SelectedIndex}", logLevel: LogLevel.Info);
             }
         }
 

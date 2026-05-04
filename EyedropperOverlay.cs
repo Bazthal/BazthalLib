@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
+using static BazthalLib.DebugUtils;
 
 namespace BazthalLib
 {
@@ -92,7 +93,7 @@ namespace BazthalLib
                 (Width - instructionLabel.Width) / 2,
                 (Height - instructionLabel.Height) / 2
             );
-            DebugUtils.Log("Misc", $"{this.Name}", "Showing instruction label");
+            DebugUtils.Log("Misc", $"{this.Name}", "Showing instruction label", logLevel: LogLevel.Info);
             //DebugUtils.Log("Misc", "EyeDropperOverlay", "Showing instruction label");
         }
 
