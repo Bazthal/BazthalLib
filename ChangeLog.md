@@ -1,5 +1,9 @@
 ﻿# BazthalLib Changelog
 
+## 1.2.6 .NET10
+- Added .NET10 LTS to target framework
+  - 
+
 ## 1.2.5
 
 ### Message Box Enhancements
